@@ -1,5 +1,5 @@
 import React from "react";
-import { ShieldCheck, BookOpen, Clock } from "lucide-react";
+import { ArrowLeftRight, ShieldAlert, Cpu } from "lucide-react";
 import { useSecurityStore } from "../../store/securityStore";
 import type { ActiveNavTab } from "../../types/transaction";
 
@@ -8,35 +8,34 @@ export const FloatingNav: React.FC = () => {
 
   const navItems = [
     {
-      id: "protect" as ActiveNavTab,
-      label: "Protect",
-      icon: ShieldCheck,
-      badge: null,
+      id: "transactions" as ActiveNavTab,
+      label: "Transactions",
+      icon: ArrowLeftRight,
+      badge: "Gateway Core",
     },
     {
-      id: "learn" as ActiveNavTab,
-      label: "Learn",
-      icon: BookOpen,
-      badge: "Architecture",
-    },
-    {
-      id: "activity" as ActiveNavTab,
-      label: "Activity",
-      icon: Clock,
+      id: "events" as ActiveNavTab,
+      label: "Security Events",
+      icon: ShieldAlert,
       badge: auditEvents.length > 0 ? String(auditEvents.length) : null,
+    },
+    {
+      id: "system" as ActiveNavTab,
+      label: "System",
+      icon: Cpu,
+      badge: null,
     },
   ];
 
   return (
     <nav
-      className="flex items-center justify-center p-1.5 rounded-2xl shadow-sm border backdrop-blur-md mx-auto max-w-fit transition-all"
+      className="flex items-center justify-between border-b pb-3 pt-1 transition-all"
       style={{
-        backgroundColor: "rgba(var(--surface-muted), 0.9)",
         borderColor: "rgb(var(--border))",
       }}
-      aria-label="Navigation switcher"
+      aria-label="Enclave operational navigation"
     >
-      <div className="flex items-center gap-1 sm:gap-1.5">
+      <div className="flex items-center gap-2 sm:gap-3">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
           const Icon = item.icon;
@@ -45,8 +44,10 @@ export const FloatingNav: React.FC = () => {
               key={item.id}
               type="button"
               onClick={() => setActiveTab(item.id)}
-              className={`relative flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition-all duration-150 ${
-                isActive ? "shadow-sm" : "hover:scale-102"
+              className={`relative flex items-center gap-2 px-3.5 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all duration-150 cursor-pointer ${
+                isActive
+                  ? "shadow-sm"
+                  : "opacity-70 hover:opacity-100 hover:scale-[1.01]"
               }`}
               style={
                 isActive
@@ -66,7 +67,7 @@ export const FloatingNav: React.FC = () => {
                 <span
                   className="rounded-full px-2 py-0.5 text-[10px] font-mono font-bold"
                   style={{
-                    backgroundColor: isActive ? "rgb(var(--accent-soft))" : "rgb(var(--surface))",
+                    backgroundColor: isActive ? "rgb(var(--accent-soft))" : "rgb(var(--surface-muted))",
                     color: isActive ? "rgb(var(--accent))" : "rgb(var(--text-secondary))",
                     border: "1px solid rgb(var(--border))",
                   }}
@@ -77,6 +78,11 @@ export const FloatingNav: React.FC = () => {
             </button>
           );
         })}
+      </div>
+
+      <div className="hidden md:flex items-center gap-2 text-xs font-mono text-caption">
+        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+        <span>STRICT STATEFUL INVARIANTS · v1.0</span>
       </div>
     </nav>
   );

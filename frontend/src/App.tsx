@@ -1,16 +1,17 @@
 import { useEffect } from "react";
 import { AppHeader } from "./components/shell/AppHeader";
 import { FloatingNav } from "./components/shell/FloatingNav";
-import { ProtectWorkspace } from "./components/protect/ProtectWorkspace";
-import { LearnWorkspace } from "./components/learn/LearnWorkspace";
-import { ActivityLedger } from "./components/activity/ActivityLedger";
+import { TransactionWorkspace } from "./components/transactions/TransactionWorkspace";
+import { SecurityEventsLedger } from "./components/events/SecurityEventsLedger";
+import { SystemEnclaveView } from "./components/system/SystemEnclaveView";
 import { EvidenceSheet } from "./components/evidence/EvidenceSheet";
+import { EnclaveLogin } from "./components/auth/EnclaveLogin";
 import { useSecurityStore } from "./store/securityStore";
 
 export function App() {
-  const { theme, activeTab } = useSecurityStore();
+  const { theme, activeTab, isAuthenticated } = useSecurityStore();
 
-  // Ensure theme class is applied on initial mount
+  // Ensure theme class is applied on initial mount & toggle
   useEffect(() => {
     if (theme === "dark") {
       document.documentElement.classList.add("dark");
@@ -18,6 +19,11 @@ export function App() {
       document.documentElement.classList.remove("dark");
     }
   }, [theme]);
+
+  // When not logged in, present the enterprise enclave login demo
+  if (!isAuthenticated) {
+    return <EnclaveLogin />;
+  }
 
   return (
     <div
@@ -27,19 +33,19 @@ export function App() {
       {/* 1. Operational Enterprise Top Header */}
       <AppHeader />
 
-      {/* 2. Main Workspace */}
-      <main className="flex-1 w-full max-w-[1400px] mx-auto px-4 py-4 sm:px-6 lg:px-8 flex flex-col gap-5">
-        {/* Floating Contextual Nav Pill */}
+      {/* 2. Main Operational Workspace */}
+      <main className="flex-1 w-full max-w-[1400px] mx-auto px-4 py-4 sm:px-6 lg:px-8 flex flex-col gap-4">
+        {/* Navigation Tabs (Transactions dominant, Events, System) */}
         <FloatingNav />
 
-        {/* Tab 1: Operator Protect Workspace (Primary & Dominant) */}
-        {activeTab === "protect" && <ProtectWorkspace />}
+        {/* Tab 1: Transactions (Overwhelmingly Dominant Protagonist) */}
+        {activeTab === "transactions" && <TransactionWorkspace />}
 
-        {/* Tab 2: Learn (Architecture + Quantum Research Foundation) */}
-        {activeTab === "learn" && <LearnWorkspace />}
+        {/* Tab 2: Security Events (Operational Audit Ledger) */}
+        {activeTab === "events" && <SecurityEventsLedger />}
 
-        {/* Tab 3: Activity (Transaction History Ledger) */}
-        {activeTab === "activity" && <ActivityLedger />}
+        {/* Tab 3: System (Restrained Operational Status) */}
+        {activeTab === "system" && <SystemEnclaveView />}
       </main>
 
       {/* Global Slide-over Evidence Drawer */}

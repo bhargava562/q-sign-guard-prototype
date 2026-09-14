@@ -38,54 +38,85 @@ export interface InvalidRequestScenario {
   title: string;
   description: string;
   expectedInvariant: string;
-  applyMutation: (packet: any) => any;
+  applyMutation: (packet: any) => Promise<any> | any;
 }
 
 export const INVALID_REQUEST_SCENARIOS: InvalidRequestScenario[] = [
   {
     id: "tamper-message",
-    title: "Modified Transaction Payload",
-    description: "Transaction message or amount is modified in transit after signing.",
-    expectedInvariant: "Signature Guard detects SHA-256 context hash mismatch. ML-DSA-65 signature invalid.",
+    title: "Tampered Payload in Transit",
+    description: "Transaction message altered in transit without signer's private key.",
+    expectedInvariant: "Signature FAIL: ML-DSA-65 verification fails due to SHA-256 context hash mismatch.",
     applyMutation: (packet) => ({
       ...packet,
       tamperedMessage: "Transfer ₹1,000,000 to Mallory (Altered in Transit)",
     }),
   },
   {
-    id: "tamper-session",
-    title: "Session ID Substitution",
-    description: "Request attempts to execute under an unauthorized or swapped session context.",
-    expectedInvariant: "Context Guard detects session binding mismatch. Context rejected.",
-    applyMutation: (packet) => ({
-      ...packet,
-      tamperedSessionId: "S-ROGUE-9999",
-    }),
+    id: "unauthorized-context",
+    title: "Unauthorized Session Context (Valid Signature)",
+    description: "Signer genuinely signed this context, but session S-REVOKED-44 is revoked in gateway policy.",
+    expectedInvariant: "Signature PASS, Context FAIL: Cryptographic signature is valid, but session context is unauthenticated.",
+    applyMutation: async (packet) => {
+      // Import on the fly or build context with revoked session and genuine signature
+      const { buildCanonicalContext, canonicalizeJson, canonicalStringToBytes } = await import("../engine/canonicalize");
+      const { defaultSignatureProvider } = await import("../engine/signatureProvider");
+      
+      const payloadWithRevokedSession = {
+        ...packet.payload,
+        sessionId: "S-REVOKED-44",
+      };
+      const canonicalCtx = buildCanonicalContext(payloadWithRevokedSession);
+      const canonicalJson = canonicalizeJson(canonicalCtx);
+      const canonicalBytes = canonicalStringToBytes(canonicalJson);
+      const signResult = await defaultSignatureProvider.sign(canonicalBytes);
+
+      return {
+        ...packet,
+        payload: payloadWithRevokedSession,
+        canonicalJson,
+        contextHashHex: signResult.contextHashHex,
+        signatureHex: signResult.signatureHex,
+        publicKeyHex: signResult.publicKeyHex,
+        tamperedMessage: undefined,
+        tamperedSessionId: undefined,
+      };
+    },
   },
   {
     id: "expired-ttl",
-    title: "Expired Request Window (TTL)",
-    description: "Request timestamp arrives past the maximum allowable execution window.",
-    expectedInvariant: "Freshness Guard rejects expired request timestamp (TTL window exceeded).",
-    applyMutation: (packet) => ({
-      ...packet,
-      payload: {
+    title: "Expired Validity Window (TTL)",
+    description: "Signer signed valid request, but validity window has elapsed before arrival at gateway.",
+    expectedInvariant: "Signature PASS, Context PASS, Freshness FAIL: Request timestamp expired.",
+    applyMutation: async (packet) => {
+      const { buildCanonicalContext, canonicalizeJson, canonicalStringToBytes } = await import("../engine/canonicalize");
+      const { defaultSignatureProvider } = await import("../engine/signatureProvider");
+
+      const expiredPayload = {
         ...packet.payload,
-        expiresAt: new Date(Date.now() - 120000).toISOString(),
-      },
-    }),
+        expiresAt: new Date(Date.now() - 300000).toISOString(), // expired 5 mins ago
+      };
+      const canonicalCtx = buildCanonicalContext(expiredPayload);
+      const canonicalJson = canonicalizeJson(canonicalCtx);
+      const canonicalBytes = canonicalStringToBytes(canonicalJson);
+      const signResult = await defaultSignatureProvider.sign(canonicalBytes);
+
+      return {
+        ...packet,
+        payload: expiredPayload,
+        canonicalJson,
+        contextHashHex: signResult.contextHashHex,
+        signatureHex: signResult.signatureHex,
+        publicKeyHex: signResult.publicKeyHex,
+      };
+    },
   },
   {
-    id: "sequence-gap",
-    title: "Monotonic Sequence Violation",
-    description: "Transaction skips sequence numbers or arrives out of order.",
-    expectedInvariant: "Freshness Guard enforces strict monotonic sequence (sequence !== lastSeq + 1).",
-    applyMutation: (packet) => ({
-      ...packet,
-      payload: {
-        ...packet.payload,
-        sequence: packet.payload.sequence + 50,
-      },
-    }),
+    id: "replay-duplicate",
+    title: "Replay Attack (Identical Packet)",
+    description: "Exact duplicate of previously executed transaction TX-104 re-transmitted.",
+    expectedInvariant: "Signature PASS, Context PASS, Freshness FAIL: Nonce was already consumed.",
+    applyMutation: (packet) => packet,
   },
 ];
+

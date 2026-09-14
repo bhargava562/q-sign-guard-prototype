@@ -141,6 +141,13 @@ export class InMemoryReplayStore {
     return this.lastSequenceBySession.get(sessionId);
   }
 
+  getStats() {
+    return {
+      totalTrackedSessions: this.lastSequenceBySession.size,
+      totalTrackedNonces: this.consumedNonces.size,
+    };
+  }
+
   reset(): void {
     this.consumedNonces.clear();
     this.lastSequenceBySession.clear();

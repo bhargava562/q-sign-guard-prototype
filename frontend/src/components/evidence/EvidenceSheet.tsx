@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, Copy, Check, ShieldCheck, Layers, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { X, Copy, Check, ShieldCheck, Layers, Clock, CheckCircle2, AlertOctagon } from "lucide-react";
 import { useSecurityStore } from "../../store/securityStore";
 
 export const EvidenceSheet: React.FC = () => {
@@ -26,9 +26,19 @@ export const EvidenceSheet: React.FC = () => {
       <div className="flex-1" onClick={closeEvidenceSheet} />
 
       {/* Slide-over Drawer Panel */}
-      <div className="w-full max-w-xl h-full bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
+      <div
+        className="w-full max-w-xl h-full border-l shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-right duration-200"
+        style={{
+          backgroundColor: "rgb(var(--surface))",
+          borderColor: "rgb(var(--border))",
+          color: "rgb(var(--foreground))",
+        }}
+      >
         {/* Drawer Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800 shrink-0">
+        <div
+          className="flex items-center justify-between p-6 border-b shrink-0"
+          style={{ borderColor: "rgb(var(--border))" }}
+        >
           <div className="flex items-center gap-2.5">
             <div
               className={`h-9 w-9 rounded-xl flex items-center justify-center ${
@@ -37,17 +47,19 @@ export const EvidenceSheet: React.FC = () => {
                   : "bg-rose-500/10 text-rose-500 border border-rose-500/30"
               }`}
             >
-              {isAccepted ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
+              {isAccepted ? <CheckCircle2 className="h-5 w-5" /> : <AlertOctagon className="h-5 w-5" />}
             </div>
             <div>
-              <h2 className="text-base font-black text-heading">Verification Evidence Sheet</h2>
-              <span className="text-xs font-mono text-caption">Request ID: {packet.id}</span>
+              <h2 className="text-base font-black text-heading">
+                {isAccepted ? "Verification Evidence Sheet" : "Why Was This Blocked?"}
+              </h2>
+              <span className="text-xs font-mono text-caption">Transaction ID: {packet.id}</span>
             </div>
           </div>
           <button
             type="button"
             onClick={closeEvidenceSheet}
-            className="h-8 w-8 rounded-xl flex items-center justify-center text-caption hover:text-heading hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="h-8 w-8 rounded-xl flex items-center justify-center text-caption hover:text-heading hover:bg-slate-500/10 transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -64,7 +76,7 @@ export const EvidenceSheet: React.FC = () => {
             }`}
           >
             <span className="text-[10px] font-mono uppercase font-bold text-caption block">
-              Enforcement Decision
+              Gateway Policy Decision
             </span>
             <div className="flex items-center justify-between mt-1">
               <span
@@ -74,83 +86,113 @@ export const EvidenceSheet: React.FC = () => {
               >
                 {decision?.execution === "authorized" ? "EXECUTION AUTHORIZED" : "EXECUTION BLOCKED"}
               </span>
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded font-bold bg-slate-200 dark:bg-slate-800 text-heading">
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded font-bold bg-slate-500/10 text-heading border border-slate-500/20">
                 {decision?.ruleViolated || "NONE"}
               </span>
             </div>
             <p className="text-xs text-caption mt-2 leading-relaxed">{decision?.reason}</p>
-            <div className="flex items-center justify-between text-[11px] font-mono text-caption mt-3 pt-3 border-t border-slate-200/50 dark:border-slate-800/50">
-              <span>Simulation Latency: {decision?.simulationLatencyMs ?? 4.2} ms</span>
+            <div
+              className="flex items-center justify-between text-[11px] font-mono text-caption mt-3 pt-3 border-t"
+              style={{ borderColor: "rgb(var(--border))" }}
+            >
+              <span>Enclave Latency: {decision?.simulationLatencyMs ?? 4.2} ms</span>
               <span>Evaluated: {new Date(decision?.evaluatedAt || Date.now()).toLocaleTimeString()}</span>
             </div>
           </div>
 
           {/* Section 2: Cryptographic Authenticity */}
-          <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
+          <div
+            className="p-4 rounded-2xl border"
+            style={{
+              backgroundColor: "rgb(var(--surface-muted))",
+              borderColor: "rgb(var(--border))",
+            }}
+          >
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-heading flex items-center gap-1.5">
-                <ShieldCheck className="h-4 w-4 text-indigo-500" />
-                <span>1. Cryptographic Origin (ML-DSA-65)</span>
+                <ShieldCheck className="h-4 w-4 text-sky-500" />
+                <span>1. Authentication (ML-DSA-65)</span>
               </span>
               <span
                 className={`text-xs font-bold ${
                   decision?.authenticity === "valid" ? "text-emerald-500" : "text-rose-500"
                 }`}
               >
-                {decision?.authenticity === "valid" ? "VALID SIGNATURE ✓" : "SIGNATURE MISMATCH ✕"}
+                {decision?.authenticity === "valid" ? "VALID SIGNATURE ✓" : "INVALID SIGNATURE ✕"}
               </span>
             </div>
             <p className="text-xs text-caption mb-3">
               Verifies the post-quantum digital signature against the SHA-256 digest of the canonical context.
             </p>
             <div className="space-y-2 text-xs font-mono">
-              <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                <span className="text-caption text-[10px] block">ML-DSA-65 Signature Snippet:</span>
-                <span className="text-heading truncate block mt-0.5">{packet.signatureHex}</span>
+              <div
+                className="p-2.5 rounded-xl border"
+                style={{ backgroundColor: "rgb(var(--surface))", borderColor: "rgb(var(--border))" }}
+              >
+                <span className="text-caption text-[10px] block">Algorithm Standard:</span>
+                <span className="text-heading font-semibold block mt-0.5">{packet.algorithm} (NIST FIPS 204)</span>
               </div>
-              <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                <span className="text-caption text-[10px] block">Public Key Fingerprint:</span>
-                <span className="text-heading truncate block mt-0.5">{packet.publicKeyHex}</span>
+              <div
+                className="p-2.5 rounded-xl border"
+                style={{ backgroundColor: "rgb(var(--surface))", borderColor: "rgb(var(--border))" }}
+              >
+                <span className="text-caption text-[10px] block">ML-DSA-65 Signature:</span>
+                <span className="text-heading truncate block mt-0.5">{packet.signatureHex}</span>
               </div>
             </div>
           </div>
 
           {/* Section 3: Canonical Context Binding (RFC 8785) */}
-          <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
+          <div
+            className="p-4 rounded-2xl border"
+            style={{
+              backgroundColor: "rgb(var(--surface-muted))",
+              borderColor: "rgb(var(--border))",
+            }}
+          >
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-heading flex items-center gap-1.5">
-                <Layers className="h-4 w-4 text-indigo-500" />
-                <span>2. Canonical Context Binding (RFC 8785)</span>
+                <Layers className="h-4 w-4 text-sky-500" />
+                <span>2. Canonical Context (RFC 8785)</span>
               </span>
               <button
                 type="button"
                 onClick={handleCopyJson}
-                className="flex items-center gap-1 text-[11px] font-mono text-indigo-600 dark:text-indigo-400 hover:underline"
+                className="flex items-center gap-1 text-[11px] font-mono text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
               >
                 {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                 <span>{copied ? "Copied" : "Copy JSON"}</span>
               </button>
             </div>
             <p className="text-xs text-caption mb-3">
-              All transaction fields are lexicographically sorted to eliminate serialization ambiguities prior to hashing.
+              Deterministic JSON canonicalization guarantees identical byte serialization for hashing.
             </p>
             <pre className="p-3 rounded-xl bg-slate-950 text-emerald-400 font-mono text-xs overflow-x-auto border border-slate-800 max-h-48 leading-relaxed">
               {packet.canonicalJson}
             </pre>
-            <div className="mt-3 p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-mono">
-              <span className="text-caption text-[10px] block">SHA-256 Context Commitment Hash:</span>
-              <span className="text-indigo-600 dark:text-indigo-400 truncate block mt-0.5">
+            <div
+              className="mt-3 p-2.5 rounded-xl border text-xs font-mono"
+              style={{ backgroundColor: "rgb(var(--surface))", borderColor: "rgb(var(--border))" }}
+            >
+              <span className="text-caption text-[10px] block">SHA-256 Context Commitment Digest:</span>
+              <span className="text-sky-600 dark:text-sky-400 truncate block mt-0.5">
                 {packet.contextHashHex}
               </span>
             </div>
           </div>
 
-          {/* Section 4: Protocol Freshness & Replay State */}
-          <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
+          {/* Section 4: Protocol State & Freshness */}
+          <div
+            className="p-4 rounded-2xl border"
+            style={{
+              backgroundColor: "rgb(var(--surface-muted))",
+              borderColor: "rgb(var(--border))",
+            }}
+          >
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-heading flex items-center gap-1.5">
-                <Clock className="h-4 w-4 text-indigo-500" />
-                <span>3. Protocol Freshness & Invariant State</span>
+                <Clock className="h-4 w-4 text-sky-500" />
+                <span>3. Protocol State & Freshness</span>
               </span>
               <span
                 className={`text-xs font-bold ${
@@ -161,20 +203,32 @@ export const EvidenceSheet: React.FC = () => {
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs font-mono mt-3">
-              <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                <span className="text-caption text-[10px] block">SESSION ID:</span>
+              <div
+                className="p-2.5 rounded-xl border"
+                style={{ backgroundColor: "rgb(var(--surface))", borderColor: "rgb(var(--border))" }}
+              >
+                <span className="text-caption text-[10px] block font-sans">Session:</span>
                 <span className="text-heading font-semibold">{packet.payload.sessionId}</span>
               </div>
-              <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                <span className="text-caption text-[10px] block">NONCE:</span>
+              <div
+                className="p-2.5 rounded-xl border"
+                style={{ backgroundColor: "rgb(var(--surface))", borderColor: "rgb(var(--border))" }}
+              >
+                <span className="text-caption text-[10px] block font-sans">Nonce:</span>
                 <span className="text-heading font-semibold">{packet.payload.nonce}</span>
               </div>
-              <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                <span className="text-caption text-[10px] block">SEQUENCE:</span>
+              <div
+                className="p-2.5 rounded-xl border"
+                style={{ backgroundColor: "rgb(var(--surface))", borderColor: "rgb(var(--border))" }}
+              >
+                <span className="text-caption text-[10px] block font-sans">Sequence:</span>
                 <span className="text-heading font-semibold">{packet.payload.sequence}</span>
               </div>
-              <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                <span className="text-caption text-[10px] block">REPLAY STATUS:</span>
+              <div
+                className="p-2.5 rounded-xl border"
+                style={{ backgroundColor: "rgb(var(--surface))", borderColor: "rgb(var(--border))" }}
+              >
+                <span className="text-caption text-[10px] block font-sans">Status:</span>
                 <span
                   className={`font-semibold ${
                     decision?.ruleViolated === "REPLAY_NONCE_REUSED" ? "text-rose-500" : "text-emerald-500"
@@ -188,11 +242,14 @@ export const EvidenceSheet: React.FC = () => {
         </div>
 
         {/* Drawer Footer */}
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800 shrink-0 bg-slate-50/50 dark:bg-slate-900/50">
+        <div
+          className="p-4 border-t shrink-0"
+          style={{ borderColor: "rgb(var(--border))" }}
+        >
           <button
             type="button"
             onClick={closeEvidenceSheet}
-            className="w-full py-2.5 rounded-xl font-bold text-xs bg-slate-200 dark:bg-slate-800 text-heading hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors"
+            className="w-full py-2.5 rounded-xl font-bold text-xs bg-slate-500/10 hover:bg-slate-500/20 text-heading transition-colors cursor-pointer"
           >
             Close Evidence Drawer
           </button>

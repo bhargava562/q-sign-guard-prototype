@@ -96,13 +96,19 @@ export type ThemeMode = "light" | "dark";
 export type OperatorStage =
   | "incoming"
   | "verifying"
-  | "processed"
+  | "authorized"
   | "duplicate-arrived"
   | "duplicate-verifying"
-  | "blocked"
-  | "invalid-test-verifying";
+  | "blocked";
 
-export type ActiveNavTab = "protect" | "learn" | "activity";
+export type ActiveNavTab = "transactions" | "events" | "system";
+
+export interface OperatorUser {
+  name: string;
+  email: string;
+  role: string;
+  enclave: string;
+}
 
 export interface IncomingRequestItem {
   id: string;

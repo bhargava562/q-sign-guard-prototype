@@ -10,6 +10,7 @@ import type {
   ThemeMode,
   OperatorStage,
   ActiveNavTab,
+  OperatorUser,
   IncomingRequestItem,
 } from "../types/transaction";
 import { buildCanonicalContext, canonicalizeJson, canonicalStringToBytes } from "../engine/canonicalize";
@@ -33,6 +34,12 @@ export interface AuditEvent {
 }
 
 export interface SecurityStoreState {
+  // Auth State
+  isAuthenticated: boolean;
+  currentUser: OperatorUser;
+  loginDemo: () => void;
+  logout: () => void;
+
   theme: ThemeMode;
   activeTab: ActiveNavTab;
   operatorStage: OperatorStage;
@@ -96,6 +103,13 @@ function getInitialTheme(): ThemeMode {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const DEFAULT_OPERATOR: OperatorUser = {
+  name: "Alice M.",
+  email: "sec_ops_alice@qsignguard.internal",
+  role: "Security Operations Engineer",
+  enclave: "Asia-South-1 Enclave",
+};
+
 export const useSecurityStore = create<SecurityStoreState>((set, get) => {
   const initialRequest = DEFAULT_INCOMING_REQUESTS[0];
   const now = new Date();
@@ -112,8 +126,13 @@ export const useSecurityStore = create<SecurityStoreState>((set, get) => {
   };
 
   return {
+    isAuthenticated: false,
+    currentUser: DEFAULT_OPERATOR,
+    loginDemo: () => set({ isAuthenticated: true, activeTab: "transactions", operatorStage: "incoming" }),
+    logout: () => set({ isAuthenticated: false }),
+
     theme: getInitialTheme(),
-    activeTab: "protect",
+    activeTab: "transactions",
     operatorStage: "incoming",
     
     incomingRequests: DEFAULT_INCOMING_REQUESTS,
@@ -255,7 +274,7 @@ export const useSecurityStore = create<SecurityStoreState>((set, get) => {
       // 3. Execution Outcome
       if (decision.status === "accepted") {
         set({
-          operatorStage: "processed",
+          operatorStage: "authorized",
           pipelinePhase: "authorized",
           lifecycleState: "SUCCESS",
           baselineAuthorizedPacket: packet,
@@ -388,12 +407,12 @@ export const useSecurityStore = create<SecurityStoreState>((set, get) => {
       const scenario = INVALID_REQUEST_SCENARIOS.find((s) => s.id === scenarioId);
       if (!scenario) return;
 
-      const mutatedPacket = scenario.applyMutation(basePacket);
+      const mutatedPacket = await scenario.applyMutation(basePacket);
       const stepDelay = reducedMotion ? 0 : 250;
 
       set({
         isProcessing: true,
-        operatorStage: "invalid-test-verifying",
+        operatorStage: "verifying",
         lifecycleState: "PROCESSING",
         pipelinePhase: "verifying-signature",
         activePacket: mutatedPacket,
