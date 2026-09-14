@@ -8,12 +8,15 @@ import type {
   SecurityDecision,
   SecurityStatus,
   ThemeMode,
+  OperatorStage,
+  ActiveNavTab,
+  IncomingRequestItem,
 } from "../types/transaction";
 import { buildCanonicalContext, canonicalizeJson, canonicalStringToBytes } from "../engine/canonicalize";
 import { defaultSignatureProvider } from "../engine/signatureProvider";
 import { defaultReplayStore } from "../engine/replayGuard";
 import { evaluateTransactionGateway } from "../engine/decisionEngine";
-import { ATTACK_SCENARIOS } from "../data/scenarios";
+import { DEFAULT_INCOMING_REQUESTS, INVALID_REQUEST_SCENARIOS } from "../data/incomingRequests";
 
 export interface AuditEvent {
   id: string;
@@ -31,11 +34,20 @@ export interface AuditEvent {
 
 export interface SecurityStoreState {
   theme: ThemeMode;
-  activeTab: "console" | "attacks" | "audit" | "research";
+  activeTab: ActiveNavTab;
+  operatorStage: OperatorStage;
+  
+  // Incoming Request Queue
+  incomingRequests: IncomingRequestItem[];
+  selectedIncomingRequest: IncomingRequestItem;
+  
+  // Transaction & Cryptographic State
   payload: TransactionPayload;
   canonicalContext: CanonicalContext | null;
   activePacket: SignedTransactionPacket | null;
   baselineAuthorizedPacket: SignedTransactionPacket | null;
+  
+  // Pipeline & Guard State
   pipelinePhase: PipelinePhase;
   lifecycleState: LifecycleState;
   guardStates: {
@@ -44,337 +56,420 @@ export interface SecurityStoreState {
     freshnessPassed: boolean | null;
   };
   lastDecision: SecurityDecision | null;
+  
+  // Audit Ledger & Evidence Drawer
   auditEvents: AuditEvent[];
-  selectedScenarioId: string;
+  evidenceDrawerOpen: boolean;
+  activeEvidencePacket: SignedTransactionPacket | null;
+  activeEvidenceDecision: SecurityDecision | null;
+  
+  // Controls
   isProcessing: boolean;
   reducedMotion: boolean;
 
   // Actions
   setTheme: (theme: ThemeMode) => void;
-  setActiveTab: (tab: "console" | "attacks" | "audit" | "research") => void;
-  updatePayload: (partial: Partial<TransactionPayload>) => void;
-  randomizeTransaction: () => void;
-  generateAndSign: () => Promise<SignedTransactionPacket>;
-  executePipeline: (packet: SignedTransactionPacket) => Promise<SecurityDecision>;
-  replayBaseline: () => Promise<void>;
-  selectScenario: (scenarioId: string) => void;
-  launchScenario: (scenarioId: string) => Promise<void>;
-  resetReplayStore: () => void;
+  setActiveTab: (tab: ActiveNavTab) => void;
+  setOperatorStage: (stage: OperatorStage) => void;
+  selectIncomingRequest: (req: IncomingRequestItem) => void;
   setReducedMotion: (enabled: boolean) => void;
+  
+  // Evidence Drawer Actions
+  openEvidenceSheet: (packet?: SignedTransactionPacket, decision?: SecurityDecision) => void;
+  closeEvidenceSheet: () => void;
+  
+  // Core Operator Workflow Actions
+  verifyAndProcess: () => Promise<void>;
+  triggerDuplicateArrival: () => void;
+  processDuplicate: () => Promise<void>;
+  testInvalidScenario: (scenarioId: string) => Promise<void>;
+  resetToIncoming: () => void;
 }
-
-const DEFAULT_PAYLOAD: TransactionPayload = {
-  message: "Transfer ₹10,000 to Bob",
-  sender: "Alice",
-  receiver: "Bob",
-  sessionId: "S-4821",
-  nonce: "N-88321",
-  sequence: 104,
-  issuedAt: new Date().toISOString(),
-  expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-};
 
 function getInitialTheme(): ThemeMode {
   if (typeof window !== "undefined") {
     const saved = localStorage.getItem("q-signguard-theme") as ThemeMode | null;
     if (saved === "light" || saved === "dark") return saved;
   }
-  return "light"; // Default to light mode
+  return "light";
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export const useSecurityStore = create<SecurityStoreState>((set, get) => ({
-  theme: getInitialTheme(),
-  activeTab: "console",
-  payload: DEFAULT_PAYLOAD,
-  canonicalContext: null,
-  activePacket: null,
-  baselineAuthorizedPacket: null,
-  pipelinePhase: "idle",
-  lifecycleState: "EMPTY",
-  guardStates: {
-    signaturePassed: null,
-    contextPassed: null,
-    freshnessPassed: null,
-  },
-  lastDecision: null,
-  auditEvents: [],
-  selectedScenarioId: "replay_attack",
-  isProcessing: false,
-  reducedMotion: false,
+export const useSecurityStore = create<SecurityStoreState>((set, get) => {
+  const initialRequest = DEFAULT_INCOMING_REQUESTS[0];
+  const now = new Date();
+  
+  const initialPayload: TransactionPayload = {
+    message: initialRequest.message,
+    sender: initialRequest.sender,
+    receiver: initialRequest.receiver,
+    sessionId: initialRequest.sessionId,
+    nonce: "N-88321",
+    sequence: 104,
+    issuedAt: now.toISOString(),
+    expiresAt: new Date(now.getTime() + 15 * 60 * 1000).toISOString(),
+  };
 
-  setTheme: (theme: ThemeMode) => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("q-signguard-theme", theme);
-      if (theme === "dark") {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
+  return {
+    theme: getInitialTheme(),
+    activeTab: "protect",
+    operatorStage: "incoming",
+    
+    incomingRequests: DEFAULT_INCOMING_REQUESTS,
+    selectedIncomingRequest: initialRequest,
+    
+    payload: initialPayload,
+    canonicalContext: null,
+    activePacket: null,
+    baselineAuthorizedPacket: null,
+    
+    pipelinePhase: "idle",
+    lifecycleState: "EMPTY",
+    guardStates: {
+      signaturePassed: null,
+      contextPassed: null,
+      freshnessPassed: null,
+    },
+    lastDecision: null,
+    
+    auditEvents: [],
+    evidenceDrawerOpen: false,
+    activeEvidencePacket: null,
+    activeEvidenceDecision: null,
+    
+    isProcessing: false,
+    reducedMotion: false,
+
+    setTheme: (theme: ThemeMode) => {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("q-signguard-theme", theme);
+        if (theme === "dark") {
+          document.documentElement.classList.add("dark");
+        } else {
+          document.documentElement.classList.remove("dark");
+        }
       }
-    }
-    set({ theme });
-  },
+      set({ theme });
+    },
 
-  setActiveTab: (activeTab) => set({ activeTab }),
+    setActiveTab: (activeTab) => set({ activeTab }),
+    setOperatorStage: (operatorStage) => set({ operatorStage }),
+    setReducedMotion: (reducedMotion) => set({ reducedMotion }),
 
-  setReducedMotion: (reducedMotion) => set({ reducedMotion }),
-
-  updatePayload: (partial) => {
-    const newPayload = { ...get().payload, ...partial };
-    set({ payload: newPayload });
-  },
-
-  randomizeTransaction: () => {
-    const randomNonce = `N-${Math.floor(10000 + Math.random() * 90000)}`;
-    const lastSeq = defaultReplayStore.getLastSequence("S-4821") ?? 103;
-    const now = new Date();
-    set({
-      payload: {
-        ...get().payload,
-        nonce: randomNonce,
+    selectIncomingRequest: (req: IncomingRequestItem) => {
+      const now = new Date();
+      const lastSeq = defaultReplayStore.getLastSequence(req.sessionId) ?? 103;
+      const nextPayload: TransactionPayload = {
+        message: req.message,
+        sender: req.sender,
+        receiver: req.receiver,
+        sessionId: req.sessionId,
+        nonce: `N-${Math.floor(10000 + Math.random() * 90000)}`,
         sequence: lastSeq + 1,
         issuedAt: now.toISOString(),
         expiresAt: new Date(now.getTime() + 15 * 60 * 1000).toISOString(),
-      },
-    });
-  },
-
-  generateAndSign: async () => {
-    const { payload, reducedMotion } = get();
-    const delay = reducedMotion ? 0 : 250;
-
-    set({
-      isProcessing: true,
-      lifecycleState: "PROCESSING",
-      pipelinePhase: "collecting",
-      guardStates: { signaturePassed: null, contextPassed: null, freshnessPassed: null },
-    });
-
-    if (delay) await sleep(delay);
-
-    const canonicalContext = buildCanonicalContext(payload);
-    const canonicalJson = canonicalizeJson(canonicalContext);
-    const canonicalBytes = canonicalStringToBytes(canonicalJson);
-
-    set({ pipelinePhase: "canonicalizing", canonicalContext });
-    if (delay) await sleep(delay);
-
-    set({ pipelinePhase: "signing" });
-    const signResult = await defaultSignatureProvider.sign(canonicalBytes);
-    if (delay) await sleep(delay);
-
-    const packetId = `TX-${payload.sequence}`;
-    const packet: SignedTransactionPacket = {
-      id: packetId,
-      payload,
-      canonicalJson,
-      contextHashHex: signResult.contextHashHex,
-      signatureHex: signResult.signatureHex,
-      algorithm: defaultSignatureProvider.algorithm,
-      publicKeyHex: signResult.publicKeyHex,
-    };
-
-    set({
-      activePacket: packet,
-      pipelinePhase: "transmitting",
-      isProcessing: false,
-    });
-
-    return packet;
-  },
-
-  executePipeline: async (packet: SignedTransactionPacket) => {
-    const { reducedMotion } = get();
-    const delay = reducedMotion ? 0 : 350;
-
-    set({
-      isProcessing: true,
-      lifecycleState: "PROCESSING",
-      pipelinePhase: "verifying-signature",
-      activePacket: packet,
-      guardStates: { signaturePassed: null, contextPassed: null, freshnessPassed: null },
-    });
-
-    if (delay) await sleep(delay);
-
-    const { decision, guards } = await evaluateTransactionGateway(packet);
-
-    // Step 1: Signature Guard
-    set({
-      guardStates: {
-        signaturePassed: guards.signaturePassed,
-        contextPassed: null,
-        freshnessPassed: null,
-      },
-    });
-
-    if (!guards.signaturePassed) {
-      if (delay) await sleep(delay);
+      };
       set({
-        pipelinePhase: "blocked",
-        lifecycleState: "BLOCKED",
-        lastDecision: decision,
-        isProcessing: false,
+        selectedIncomingRequest: req,
+        payload: nextPayload,
+        operatorStage: "incoming",
+        pipelinePhase: "idle",
+        lifecycleState: "EMPTY",
+        guardStates: { signaturePassed: null, contextPassed: null, freshnessPassed: null },
       });
-      get().auditEvents.unshift({
-        id: `EV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        timestamp: new Date().toLocaleTimeString(),
-        transactionId: packet.id,
-        summary: `BLOCKED: Signature Tampering Detected`,
-        status: decision.status,
-        authenticity: decision.authenticity,
-        execution: decision.execution,
-        ruleViolated: decision.ruleViolated,
-        reason: decision.reason,
-        packet,
-        decision,
-      });
-      return decision;
-    }
+    },
 
-    // Step 2: Context Guard
-    set({ pipelinePhase: "checking-context" });
-    if (delay) await sleep(delay);
-
-    set({
-      guardStates: {
-        signaturePassed: true,
-        contextPassed: guards.contextPassed,
-        freshnessPassed: null,
-      },
-    });
-
-    if (!guards.contextPassed) {
-      if (delay) await sleep(delay);
+    openEvidenceSheet: (packet, decision) => {
+      const p = packet || get().activePacket || get().baselineAuthorizedPacket;
+      const d = decision || get().lastDecision;
       set({
-        pipelinePhase: "blocked",
-        lifecycleState: "BLOCKED",
-        lastDecision: decision,
-        isProcessing: false,
+        evidenceDrawerOpen: true,
+        activeEvidencePacket: p,
+        activeEvidenceDecision: d,
       });
-      get().auditEvents.unshift({
-        id: `EV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        timestamp: new Date().toLocaleTimeString(),
-        transactionId: packet.id,
-        summary: `BLOCKED: Context / Session Invalid`,
-        status: decision.status,
-        authenticity: decision.authenticity,
-        execution: decision.execution,
-        ruleViolated: decision.ruleViolated,
-        reason: decision.reason,
-        packet,
-        decision,
-      });
-      return decision;
-    }
+    },
 
-    // Step 3: Freshness & Replay Guard
-    set({ pipelinePhase: "checking-freshness" });
-    if (delay) await sleep(delay);
+    closeEvidenceSheet: () => set({ evidenceDrawerOpen: false }),
 
-    set({
-      guardStates: {
-        signaturePassed: true,
-        contextPassed: true,
-        freshnessPassed: guards.freshnessPassed,
-      },
-    });
+    verifyAndProcess: async () => {
+      const { payload, reducedMotion, selectedIncomingRequest } = get();
+      const stepDelay = reducedMotion ? 0 : 250;
 
-    if (delay) await sleep(delay);
-
-    if (decision.status === "accepted") {
       set({
-        pipelinePhase: "authorized",
-        lifecycleState: "SUCCESS",
-        baselineAuthorizedPacket: packet,
-        lastDecision: decision,
-        isProcessing: false,
+        isProcessing: true,
+        operatorStage: "verifying",
+        lifecycleState: "PROCESSING",
+        pipelinePhase: "collecting",
+        guardStates: { signaturePassed: null, contextPassed: null, freshnessPassed: null },
       });
-      get().auditEvents.unshift({
-        id: `EV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        timestamp: new Date().toLocaleTimeString(),
-        transactionId: packet.id,
-        summary: `AUTHORIZED: Authenticated & Fresh (${packet.payload.message})`,
-        status: "accepted",
-        authenticity: "valid",
-        execution: "authorized",
-        ruleViolated: "NONE",
-        reason: decision.reason,
-        packet,
-        decision,
-      });
-    } else {
+
+      // 1. Build Canonical Context & Sign (deterministic simulation)
+      const canonicalContext = buildCanonicalContext(payload);
+      const canonicalJson = canonicalizeJson(canonicalContext);
+      const canonicalBytes = canonicalStringToBytes(canonicalJson);
+
+      set({ pipelinePhase: "canonicalizing", canonicalContext });
+      if (stepDelay) await sleep(stepDelay);
+
+      set({ pipelinePhase: "signing" });
+      const signResult = await defaultSignatureProvider.sign(canonicalBytes);
+      if (stepDelay) await sleep(stepDelay);
+
+      const packet: SignedTransactionPacket = {
+        id: selectedIncomingRequest.requestId || `TX-${payload.sequence}`,
+        payload,
+        canonicalJson,
+        contextHashHex: signResult.contextHashHex,
+        signatureHex: signResult.signatureHex,
+        algorithm: defaultSignatureProvider.algorithm,
+        publicKeyHex: signResult.publicKeyHex,
+      };
+
+      set({ activePacket: packet, pipelinePhase: "verifying-signature" });
+      if (stepDelay) await sleep(stepDelay);
+
+      // 2. Gateway Guard Evaluations
+      const { decision, guards } = await evaluateTransactionGateway(packet);
+
+      // Guard 1: Authenticity
       set({
-        pipelinePhase: "blocked",
-        lifecycleState: "BLOCKED",
-        lastDecision: decision,
-        isProcessing: false,
+        guardStates: { signaturePassed: guards.signaturePassed, contextPassed: null, freshnessPassed: null },
       });
-      get().auditEvents.unshift({
-        id: `EV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        timestamp: new Date().toLocaleTimeString(),
-        transactionId: packet.id,
-        summary: `BLOCKED: ${decision.ruleViolated} (${decision.reason})`,
-        status: decision.status,
-        authenticity: decision.authenticity,
-        execution: decision.execution,
-        ruleViolated: decision.ruleViolated,
-        reason: decision.reason,
-        packet,
-        decision,
+      if (stepDelay) await sleep(stepDelay);
+
+      // Guard 2: Context
+      set({
+        pipelinePhase: "checking-context",
+        guardStates: { signaturePassed: guards.signaturePassed, contextPassed: guards.contextPassed, freshnessPassed: null },
       });
-    }
+      if (stepDelay) await sleep(stepDelay);
 
-    return decision;
-  },
+      // Guard 3: Freshness
+      set({
+        pipelinePhase: "checking-freshness",
+        guardStates: { signaturePassed: guards.signaturePassed, contextPassed: guards.contextPassed, freshnessPassed: guards.freshnessPassed },
+      });
+      if (stepDelay) await sleep(stepDelay);
 
-  replayBaseline: async () => {
-    let packetToReplay = get().baselineAuthorizedPacket;
-    if (!packetToReplay) {
-      const generated = await get().generateAndSign();
-      await get().executePipeline(generated);
-      packetToReplay = get().baselineAuthorizedPacket;
-    }
+      // 3. Execution Outcome
+      if (decision.status === "accepted") {
+        set({
+          operatorStage: "processed",
+          pipelinePhase: "authorized",
+          lifecycleState: "SUCCESS",
+          baselineAuthorizedPacket: packet,
+          lastDecision: decision,
+          isProcessing: false,
+        });
 
-    if (packetToReplay) {
-      await get().executePipeline({ ...packetToReplay });
-    }
-  },
+        get().auditEvents.unshift({
+          id: `EV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          timestamp: new Date().toLocaleTimeString(),
+          transactionId: packet.id,
+          summary: `AUTHORIZED: ${packet.payload.message}`,
+          status: "accepted",
+          authenticity: "valid",
+          execution: "authorized",
+          ruleViolated: "NONE",
+          reason: "Cryptographically authentic and fresh context",
+          packet,
+          decision,
+        });
+      } else {
+        set({
+          operatorStage: "blocked",
+          pipelinePhase: "blocked",
+          lifecycleState: "BLOCKED",
+          lastDecision: decision,
+          isProcessing: false,
+        });
 
-  selectScenario: (selectedScenarioId) => set({ selectedScenarioId }),
-
-  launchScenario: async (scenarioId: string) => {
-    const scenario = ATTACK_SCENARIOS.find((s) => s.id === scenarioId);
-    if (!scenario) return;
-
-    let base = get().baselineAuthorizedPacket;
-    if (!base) {
-      const generated = await get().generateAndSign();
-      if (scenario.id === "normal_baseline") {
-        await get().executePipeline(generated);
-        return;
+        get().auditEvents.unshift({
+          id: `EV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          timestamp: new Date().toLocaleTimeString(),
+          transactionId: packet.id,
+          summary: `BLOCKED: ${decision.reason}`,
+          status: decision.status,
+          authenticity: decision.authenticity,
+          execution: decision.execution,
+          ruleViolated: decision.ruleViolated,
+          reason: decision.reason,
+          packet,
+          decision,
+        });
       }
-      await get().executePipeline(generated);
-      base = get().baselineAuthorizedPacket;
-    }
+    },
 
-    if (base) {
-      const attackPacket = scenario.generatePacket(base);
-      await get().executePipeline(attackPacket);
-    }
-  },
+    triggerDuplicateArrival: () => {
+      set({
+        operatorStage: "duplicate-arrived",
+        pipelinePhase: "idle",
+        lifecycleState: "EMPTY",
+        guardStates: { signaturePassed: null, contextPassed: null, freshnessPassed: null },
+      });
+    },
 
-  resetReplayStore: () => {
-    defaultReplayStore.reset();
-    set({
-      activePacket: null,
-      baselineAuthorizedPacket: null,
-      canonicalContext: null,
-      pipelinePhase: "idle",
-      lifecycleState: "EMPTY",
-      guardStates: { signaturePassed: null, contextPassed: null, freshnessPassed: null },
-      lastDecision: null,
-    });
-  },
-}));
+    processDuplicate: async () => {
+      const { baselineAuthorizedPacket, reducedMotion } = get();
+      if (!baselineAuthorizedPacket) return;
+
+      const stepDelay = reducedMotion ? 0 : 250;
+      set({
+        isProcessing: true,
+        operatorStage: "duplicate-verifying",
+        lifecycleState: "PROCESSING",
+        pipelinePhase: "verifying-signature",
+        activePacket: baselineAuthorizedPacket,
+        guardStates: { signaturePassed: null, contextPassed: null, freshnessPassed: null },
+      });
+
+      if (stepDelay) await sleep(stepDelay);
+
+      // Re-evaluate the EXACT same packet
+      const { decision, guards } = await evaluateTransactionGateway(baselineAuthorizedPacket);
+
+      // Guard 1: Signature is STILL VALID
+      set({
+        guardStates: { signaturePassed: guards.signaturePassed, contextPassed: null, freshnessPassed: null },
+      });
+      if (stepDelay) await sleep(stepDelay);
+
+      // Guard 2: Context is STILL VALID
+      set({
+        pipelinePhase: "checking-context",
+        guardStates: { signaturePassed: guards.signaturePassed, contextPassed: guards.contextPassed, freshnessPassed: null },
+      });
+      if (stepDelay) await sleep(stepDelay);
+
+      // Guard 3: Freshness FAILS (Reused Nonce!)
+      set({
+        pipelinePhase: "checking-freshness",
+        guardStates: { signaturePassed: guards.signaturePassed, contextPassed: guards.contextPassed, freshnessPassed: guards.freshnessPassed },
+      });
+      if (stepDelay) await sleep(stepDelay);
+
+      // Execution Gate: BLOCKED
+      set({
+        operatorStage: "blocked",
+        pipelinePhase: "blocked",
+        lifecycleState: "BLOCKED",
+        lastDecision: decision,
+        isProcessing: false,
+      });
+
+      get().auditEvents.unshift({
+        id: `EV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        timestamp: new Date().toLocaleTimeString(),
+        transactionId: baselineAuthorizedPacket.id,
+        summary: `REPLAY BLOCKED: Duplicate request authorization already consumed`,
+        status: "blocked",
+        authenticity: "valid",
+        execution: "blocked",
+        ruleViolated: decision.ruleViolated,
+        reason: decision.reason,
+        packet: baselineAuthorizedPacket,
+        decision,
+      });
+    },
+
+    testInvalidScenario: async (scenarioId: string) => {
+      const { baselineAuthorizedPacket, payload, reducedMotion } = get();
+      const basePacket = baselineAuthorizedPacket || {
+        id: `TX-${payload.sequence}`,
+        payload,
+        canonicalJson: canonicalizeJson(buildCanonicalContext(payload)),
+        contextHashHex: "simulated_hash",
+        signatureHex: "simulated_sig",
+        algorithm: "ML-DSA-65",
+        publicKeyHex: "pk_sim",
+      };
+
+      const scenario = INVALID_REQUEST_SCENARIOS.find((s) => s.id === scenarioId);
+      if (!scenario) return;
+
+      const mutatedPacket = scenario.applyMutation(basePacket);
+      const stepDelay = reducedMotion ? 0 : 250;
+
+      set({
+        isProcessing: true,
+        operatorStage: "invalid-test-verifying",
+        lifecycleState: "PROCESSING",
+        pipelinePhase: "verifying-signature",
+        activePacket: mutatedPacket,
+        guardStates: { signaturePassed: null, contextPassed: null, freshnessPassed: null },
+      });
+
+      if (stepDelay) await sleep(stepDelay);
+
+      const { decision, guards } = await evaluateTransactionGateway(mutatedPacket);
+
+      // Step 1: Signature
+      set({
+        guardStates: { signaturePassed: guards.signaturePassed, contextPassed: null, freshnessPassed: null },
+      });
+      if (stepDelay) await sleep(stepDelay);
+
+      // Step 2: Context
+      if (guards.signaturePassed) {
+        set({
+          pipelinePhase: "checking-context",
+          guardStates: { signaturePassed: true, contextPassed: guards.contextPassed, freshnessPassed: null },
+        });
+        if (stepDelay) await sleep(stepDelay);
+      }
+
+      // Step 3: Freshness
+      if (guards.signaturePassed && guards.contextPassed) {
+        set({
+          pipelinePhase: "checking-freshness",
+          guardStates: { signaturePassed: true, contextPassed: true, freshnessPassed: guards.freshnessPassed },
+        });
+        if (stepDelay) await sleep(stepDelay);
+      }
+
+      set({
+        operatorStage: "blocked",
+        pipelinePhase: "blocked",
+        lifecycleState: "BLOCKED",
+        lastDecision: decision,
+        isProcessing: false,
+      });
+
+      get().auditEvents.unshift({
+        id: `EV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        timestamp: new Date().toLocaleTimeString(),
+        transactionId: mutatedPacket.id,
+        summary: `BLOCKED: ${scenario.title} (${decision.reason})`,
+        status: decision.status,
+        authenticity: decision.authenticity,
+        execution: decision.execution,
+        ruleViolated: decision.ruleViolated,
+        reason: decision.reason,
+        packet: mutatedPacket,
+        decision,
+      });
+    },
+
+    resetToIncoming: () => {
+      const { selectedIncomingRequest } = get();
+      const lastSeq = defaultReplayStore.getLastSequence(selectedIncomingRequest.sessionId) ?? 104;
+      const now = new Date();
+      
+      set({
+        operatorStage: "incoming",
+        pipelinePhase: "idle",
+        lifecycleState: "EMPTY",
+        guardStates: { signaturePassed: null, contextPassed: null, freshnessPassed: null },
+        lastDecision: null,
+        payload: {
+          ...get().payload,
+          nonce: `N-${Math.floor(10000 + Math.random() * 90000)}`,
+          sequence: lastSeq + 1,
+          issuedAt: now.toISOString(),
+          expiresAt: new Date(now.getTime() + 15 * 60 * 1000).toISOString(),
+        },
+      });
+    },
+  };
+});

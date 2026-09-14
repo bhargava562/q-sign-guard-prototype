@@ -1,34 +1,29 @@
 import React from "react";
-import { Terminal, ShieldAlert, FileText, Cpu } from "lucide-react";
+import { ShieldCheck, BookOpen, Clock } from "lucide-react";
 import { useSecurityStore } from "../../store/securityStore";
+import type { ActiveNavTab } from "../../types/transaction";
 
 export const FloatingNav: React.FC = () => {
   const { activeTab, setActiveTab, auditEvents } = useSecurityStore();
 
   const navItems = [
     {
-      id: "console" as const,
-      label: "Gateway Console",
-      icon: Terminal,
+      id: "protect" as ActiveNavTab,
+      label: "Protect",
+      icon: ShieldCheck,
       badge: null,
     },
     {
-      id: "attacks" as const,
-      label: "Attack Lab",
-      icon: ShieldAlert,
-      badge: "6 Scenarios",
+      id: "learn" as ActiveNavTab,
+      label: "Learn",
+      icon: BookOpen,
+      badge: "Architecture",
     },
     {
-      id: "audit" as const,
-      label: "Audit & Evidence",
-      icon: FileText,
+      id: "activity" as ActiveNavTab,
+      label: "Activity",
+      icon: Clock,
       badge: auditEvents.length > 0 ? String(auditEvents.length) : null,
-    },
-    {
-      id: "research" as const,
-      label: "Research Telemetry",
-      icon: Cpu,
-      badge: "QDS",
     },
   ];
 
@@ -50,17 +45,15 @@ export const FloatingNav: React.FC = () => {
               key={item.id}
               type="button"
               onClick={() => setActiveTab(item.id)}
-              className={`relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition-all duration-150 ${
-                isActive
-                  ? "shadow-sm"
-                  : "hover:scale-102"
+              className={`relative flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition-all duration-150 ${
+                isActive ? "shadow-sm" : "hover:scale-102"
               }`}
               style={
                 isActive
                   ? {
                       backgroundColor: "rgb(var(--surface))",
                       color: "rgb(var(--accent))",
-                      border: "1px solid rgb(var(--border-strong))",
+                      border: "1px solid rgb(var(--border))",
                     }
                   : {
                       color: "rgb(var(--text-secondary))",
@@ -71,12 +64,10 @@ export const FloatingNav: React.FC = () => {
               <span>{item.label}</span>
               {item.badge && (
                 <span
-                  className="rounded-full px-1.5 py-0.2 text-[10px] font-mono font-bold"
+                  className="rounded-full px-2 py-0.5 text-[10px] font-mono font-bold"
                   style={{
-                    backgroundColor: isActive
-                      ? "rgb(var(--accent-soft))"
-                      : "rgb(var(--surface))",
-                    color: isActive ? "rgb(var(--accent))" : "rgb(var(--text-primary))",
+                    backgroundColor: isActive ? "rgb(var(--accent-soft))" : "rgb(var(--surface))",
+                    color: isActive ? "rgb(var(--accent))" : "rgb(var(--text-secondary))",
                     border: "1px solid rgb(var(--border))",
                   }}
                 >

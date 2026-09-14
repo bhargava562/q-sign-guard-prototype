@@ -92,3 +92,26 @@ export type LifecycleState =
   | "ERROR";
 
 export type ThemeMode = "light" | "dark";
+
+export type OperatorStage =
+  | "incoming"
+  | "verifying"
+  | "processed"
+  | "duplicate-arrived"
+  | "duplicate-verifying"
+  | "blocked"
+  | "invalid-test-verifying";
+
+export type ActiveNavTab = "protect" | "learn" | "activity";
+
+export interface IncomingRequestItem {
+  id: string;
+  requestId: string;
+  source: string;
+  sender: string;
+  receiver: string;
+  amount: string;
+  message: string;
+  sessionId: string;
+}
+
