@@ -21,7 +21,6 @@ export const SecurityPipeline: React.FC = () => {
   const isBlocked = pipelinePhase === "blocked";
   const isHeroReplay = isSigPassed && isCtxPassed && isFreshFailed;
 
-  // Determine active step index: 0 = idle, 1 = sig, 2 = ctx, 3 = freshness, 4 = exec
   let activeStep = 0;
   if (isSigVerifying) activeStep = 1;
   else if (isCtxVerifying) activeStep = 2;
@@ -35,19 +34,18 @@ export const SecurityPipeline: React.FC = () => {
 
   return (
     <div
-      className="relative flex flex-col rounded-2xl border p-4 sm:p-6 shadow-sm overflow-hidden transition-all backdrop-blur-sm"
+      className="relative flex flex-col rounded-2xl border p-4 sm:p-5 shadow-sm overflow-hidden transition-all card-panel"
       style={{
-        backgroundColor: "rgba(var(--surface), 0.95)",
         borderColor: isHeroReplay
-          ? "rgba(var(--danger), 0.5)"
+          ? "rgba(var(--danger), 0.6)"
           : isAuthorized
-          ? "rgba(var(--success), 0.5)"
+          ? "rgba(var(--success), 0.6)"
           : "rgb(var(--border))",
       }}
     >
-      {/* Background neon laser grid glow */}
+      {/* Background glow */}
       <div
-        className="absolute -top-24 -right-24 w-72 h-72 rounded-full pointer-events-none blur-3xl opacity-20"
+        className="absolute -top-24 -right-24 w-72 h-72 rounded-full pointer-events-none blur-3xl opacity-15"
         style={{
           backgroundColor: isHeroReplay
             ? "rgb(var(--danger))"
@@ -69,10 +67,14 @@ export const SecurityPipeline: React.FC = () => {
             <Cpu className="h-4 w-4" />
           </div>
           <div>
-            <h2 className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <h2 className="text-xs font-black tracking-wider uppercase text-heading flex items-center gap-2">
               <span>ACTIVE SECURITY BUS</span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                PQC Gateway Pipeline
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase tracking-wider"
+                    style={{
+                      backgroundColor: "rgb(var(--surface-muted))",
+                      color: "rgb(var(--text-secondary))",
+                    }}>
+                PQC Pipeline
               </span>
             </h2>
           </div>
@@ -81,36 +83,46 @@ export const SecurityPipeline: React.FC = () => {
         {/* Status Badge */}
         <div>
           {isAuthorized && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-extrabold px-3 py-1 rounded-full bg-emerald-500 text-white shadow-md shadow-emerald-500/20">
-              <CheckCircle2 className="h-4 w-4" />
+            <span className="inline-flex items-center gap-1.5 text-xs font-black px-3 py-1 rounded-full bg-emerald-500 text-white shadow-md shadow-emerald-500/20">
+              <CheckCircle2 className="h-3.5 w-3.5" />
               <span>AUTHORIZED</span>
             </span>
           )}
           {isHeroReplay && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-extrabold px-3 py-1 rounded-full bg-rose-500 text-white shadow-md shadow-rose-500/20 animate-pulse">
-              <ShieldAlert className="h-4 w-4" />
+            <span className="inline-flex items-center gap-1.5 text-xs font-black px-3 py-1 rounded-full bg-rose-500 text-white shadow-md shadow-rose-500/30 animate-pulse">
+              <ShieldAlert className="h-3.5 w-3.5" />
               <span>REPLAY BLOCKED</span>
             </span>
           )}
           {isBlocked && !isHeroReplay && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-extrabold px-3 py-1 rounded-full bg-rose-500 text-white shadow-md">
-              <XCircle className="h-4 w-4" />
-              <span>POLICY VIOLATION</span>
+            <span className="inline-flex items-center gap-1.5 text-xs font-black px-3 py-1 rounded-full bg-rose-500 text-white shadow-md">
+              <XCircle className="h-3.5 w-3.5" />
+              <span>VIOLATION</span>
             </span>
           )}
           {!isAuthorized && !isBlocked && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full text-slate-500 bg-slate-100 dark:bg-slate-800">
-              <span className="h-2 w-2 rounded-full bg-blue-500 animate-ping" />
+            <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1 rounded-full"
+                  style={{
+                    backgroundColor: "rgb(var(--surface-muted))",
+                    color: "rgb(var(--text-secondary))",
+                    border: "1px solid rgb(var(--border))",
+                  }}>
+              <span className="h-2 w-2 rounded-full bg-indigo-400 animate-ping" />
               <span>BUS READY</span>
             </span>
           )}
         </div>
       </div>
 
-      {/* Visual Bus Conduit Track with Animated Packet Slider */}
+      {/* Sleek Bus Conduit Track */}
       <div className="relative my-6 px-2 sm:px-6">
-        {/* The Conduit Line Track */}
-        <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full relative overflow-hidden">
+        <div
+          className="h-2 w-full rounded-full relative overflow-hidden"
+          style={{
+            backgroundColor: "rgb(var(--surface-muted))",
+            border: "1px solid rgb(var(--border))",
+          }}
+        >
           <div
             className={`h-full transition-all duration-500 rounded-full ${reducedMotion ? "" : "animate-laser"}`}
             style={{
@@ -136,9 +148,7 @@ export const SecurityPipeline: React.FC = () => {
         {/* Visual Animated Packet Capsule */}
         {activePacket && (
           <div
-            className={`absolute -top-4 transition-all duration-500 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold shadow-lg border z-20 ${
-              reducedMotion ? "" : "hover:scale-105"
-            }`}
+            className={`absolute -top-3.5 transition-all duration-500 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold shadow-lg border z-20`}
             style={{
               left:
                 activeStep === 0
@@ -156,7 +166,7 @@ export const SecurityPipeline: React.FC = () => {
                 : isAuthorized
                 ? "rgb(var(--success))"
                 : "rgb(var(--surface))",
-              color: isHeroReplay || isAuthorized ? "#ffffff" : "rgb(var(--foreground))",
+              color: isHeroReplay || isAuthorized ? "#ffffff" : "rgb(var(--text-primary))",
               borderColor: isHeroReplay
                 ? "rgb(var(--danger))"
                 : isAuthorized
@@ -164,7 +174,7 @@ export const SecurityPipeline: React.FC = () => {
                 : "rgb(var(--accent))",
             }}
           >
-            <Sparkles className="h-3.5 w-3.5" />
+            <Sparkles className="h-3 w-3" />
             <span>◈ {activePacket.id}</span>
             <span className="opacity-75 text-[10px]">({activePacket.payload.nonce})</span>
           </div>
@@ -172,17 +182,17 @@ export const SecurityPipeline: React.FC = () => {
       </div>
 
       {/* The 4 Responsive Pipeline Node Hubs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-1 relative z-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1 relative z-10">
         {/* NODE 1: ML-DSA Signature Guard */}
         <div
           className={`relative rounded-2xl border p-4 flex flex-col justify-between transition-all duration-300 ${
             isSigVerifying
-              ? "ring-2 ring-indigo-500 shadow-lg shadow-indigo-500/10 scale-[1.02]"
+              ? "ring-2 ring-indigo-500 shadow-md scale-[1.02]"
               : isSigPassed
-              ? "border-emerald-500/60 bg-emerald-50/50 dark:bg-emerald-950/20"
+              ? "border-emerald-500/60 bg-emerald-500/10"
               : isSigFailed
-              ? "border-rose-500/80 bg-rose-50/50 dark:bg-rose-950/30 scale-[1.02]"
-              : "opacity-80"
+              ? "border-rose-500/80 bg-rose-500/10 scale-[1.02]"
+              : ""
           }`}
           style={{
             backgroundColor: isSigPassed || isSigFailed ? undefined : "rgb(var(--surface-muted))",
@@ -197,28 +207,29 @@ export const SecurityPipeline: React.FC = () => {
                     ? "bg-emerald-500 text-white"
                     : isSigFailed
                     ? "bg-rose-500 text-white"
-                    : "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
+                    : "bg-indigo-500/20 text-indigo-400"
                 }`}
               >
                 <ShieldCheck className="h-5 w-5" />
               </div>
 
-              {isSigPassed && <span className="text-xs font-extrabold text-emerald-600 font-mono">PASS ✓</span>}
-              {isSigFailed && <span className="text-xs font-extrabold text-rose-600 font-mono">FAIL ✕</span>}
-              {isSigVerifying && <span className="text-[10px] font-bold text-indigo-600 animate-pulse font-mono">VERIFYING...</span>}
+              {isSigPassed && <span className="text-xs font-mono font-black text-emerald-500">PASS ✓</span>}
+              {isSigFailed && <span className="text-xs font-mono font-black text-rose-500">FAIL ✕</span>}
+              {isSigVerifying && <span className="text-[10px] font-mono font-bold text-indigo-400 animate-pulse">CHECKING</span>}
             </div>
 
-            <h3 className="text-xs font-extrabold text-slate-900 dark:text-slate-100 uppercase tracking-wide">
+            <h3 className="text-xs font-black uppercase tracking-wider text-heading">
               1. Signature Guard
             </h3>
-            <div className="text-[11px] font-mono text-slate-500 mt-1">
+            <div className="text-[11px] font-mono text-caption mt-1">
               ML-DSA-65 Integrity
             </div>
           </div>
 
-          <div className="mt-4 pt-2.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px] font-mono">
-            <span className="text-slate-400">Authenticity</span>
-            <span className={`font-bold ${isSigPassed ? "text-emerald-600" : isSigFailed ? "text-rose-600" : "text-slate-400"}`}>
+          <div className="mt-4 pt-2 border-t flex items-center justify-between text-[11px] font-mono"
+               style={{ borderColor: "rgb(var(--border))" }}>
+            <span className="text-caption">Authenticity</span>
+            <span className={`font-black ${isSigPassed ? "text-emerald-500" : isSigFailed ? "text-rose-500" : "text-caption"}`}>
               {isSigPassed ? "VALID" : isSigFailed ? "TAMPERED" : "AWAITING"}
             </span>
           </div>
@@ -228,12 +239,12 @@ export const SecurityPipeline: React.FC = () => {
         <div
           className={`relative rounded-2xl border p-4 flex flex-col justify-between transition-all duration-300 ${
             isCtxVerifying
-              ? "ring-2 ring-indigo-500 shadow-lg shadow-indigo-500/10 scale-[1.02]"
+              ? "ring-2 ring-indigo-500 shadow-md scale-[1.02]"
               : isCtxPassed
-              ? "border-emerald-500/60 bg-emerald-50/50 dark:bg-emerald-950/20"
+              ? "border-emerald-500/60 bg-emerald-500/10"
               : isCtxFailed
-              ? "border-rose-500/80 bg-rose-50/50 dark:bg-rose-950/30 scale-[1.02]"
-              : "opacity-80"
+              ? "border-rose-500/80 bg-rose-500/10 scale-[1.02]"
+              : ""
           }`}
           style={{
             backgroundColor: isCtxPassed || isCtxFailed ? undefined : "rgb(var(--surface-muted))",
@@ -248,54 +259,50 @@ export const SecurityPipeline: React.FC = () => {
                     ? "bg-emerald-500 text-white"
                     : isCtxFailed
                     ? "bg-rose-500 text-white"
-                    : "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                    : "bg-blue-500/20 text-blue-400"
                 }`}
               >
                 <Layers className="h-5 w-5" />
               </div>
 
-              {isCtxPassed && <span className="text-xs font-extrabold text-emerald-600 font-mono">MATCH ✓</span>}
-              {isCtxFailed && <span className="text-xs font-extrabold text-rose-600 font-mono">FAIL ✕</span>}
-              {isCtxVerifying && <span className="text-[10px] font-bold text-blue-600 animate-pulse font-mono">CHECKING...</span>}
+              {isCtxPassed && <span className="text-xs font-mono font-black text-emerald-500">MATCH ✓</span>}
+              {isCtxFailed && <span className="text-xs font-mono font-black text-rose-500">FAIL ✕</span>}
+              {isCtxVerifying && <span className="text-[10px] font-mono font-bold text-blue-400 animate-pulse">CHECKING</span>}
             </div>
 
-            <h3 className="text-xs font-extrabold text-slate-900 dark:text-slate-100 uppercase tracking-wide">
+            <h3 className="text-xs font-black uppercase tracking-wider text-heading">
               2. Context Guard
             </h3>
-            <div className="text-[11px] font-mono text-slate-500 mt-1">
+            <div className="text-[11px] font-mono text-caption mt-1">
               Identity & Session Bind
             </div>
           </div>
 
-          <div className="mt-4 pt-2.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px] font-mono">
-            <span className="text-slate-400">Session</span>
-            <span className={`font-bold ${isCtxPassed ? "text-emerald-600" : isCtxFailed ? "text-rose-600" : "text-slate-400"}`}>
+          <div className="mt-4 pt-2 border-t flex items-center justify-between text-[11px] font-mono"
+               style={{ borderColor: "rgb(var(--border))" }}>
+            <span className="text-caption">Session</span>
+            <span className={`font-black ${isCtxPassed ? "text-emerald-500" : isCtxFailed ? "text-rose-500" : "text-caption"}`}>
               {isCtxPassed ? "ACTIVE" : isCtxFailed ? "INVALID" : "AWAITING"}
             </span>
           </div>
         </div>
 
-        {/* NODE 3: Freshness & Replay Guard (HERO DEFLECTION SHIELD) */}
+        {/* NODE 3: Freshness & Replay Guard */}
         <div
           className={`relative rounded-2xl border p-4 flex flex-col justify-between transition-all duration-300 ${
             isFreshVerifying
-              ? "ring-2 ring-indigo-500 shadow-lg shadow-indigo-500/10 scale-[1.02]"
+              ? "ring-2 ring-indigo-500 shadow-md scale-[1.02]"
               : isFreshPassed
-              ? "border-emerald-500/60 bg-emerald-50/50 dark:bg-emerald-950/20"
+              ? "border-emerald-500/60 bg-emerald-500/10"
               : isFreshFailed
-              ? "border-rose-500 ring-4 ring-rose-500/30 bg-rose-50/70 dark:bg-rose-950/40 scale-[1.03] animate-shield-deflect"
-              : "opacity-80"
+              ? "border-rose-500 ring-2 ring-rose-500/30 bg-rose-500/15 scale-[1.03] animate-shield-deflect"
+              : ""
           }`}
           style={{
             backgroundColor: isFreshPassed || isFreshFailed ? undefined : "rgb(var(--surface-muted))",
             borderColor: isFreshPassed || isFreshFailed ? undefined : "rgb(var(--border))",
           }}
         >
-          {/* Animated Red Deflection Wave on Replay */}
-          {isFreshFailed && (
-            <div className="absolute inset-0 rounded-2xl border-2 border-rose-500 animate-ping opacity-30 pointer-events-none" />
-          )}
-
           <div>
             <div className="flex items-center justify-between mb-3">
               <div
@@ -303,33 +310,34 @@ export const SecurityPipeline: React.FC = () => {
                   isFreshPassed
                     ? "bg-emerald-500 text-white"
                     : isFreshFailed
-                    ? "bg-rose-500 text-white shadow-lg shadow-rose-500/30"
-                    : "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                    ? "bg-rose-500 text-white shadow-lg shadow-rose-500/40"
+                    : "bg-amber-500/20 text-amber-400"
                 }`}
               >
                 {isFreshFailed ? <ShieldAlert className="h-5 w-5" /> : <Clock className="h-5 w-5" />}
               </div>
 
-              {isFreshPassed && <span className="text-xs font-extrabold text-emerald-600 font-mono">FRESH ✓</span>}
+              {isFreshPassed && <span className="text-xs font-mono font-black text-emerald-500">FRESH ✓</span>}
               {isFreshFailed && (
-                <span className="text-xs font-extrabold text-white bg-rose-600 px-2 py-0.5 rounded-full font-mono shadow-sm">
+                <span className="text-xs font-mono font-black text-white bg-rose-600 px-2 py-0.5 rounded-full shadow-sm">
                   REPLAYED ✕
                 </span>
               )}
-              {isFreshVerifying && <span className="text-[10px] font-bold text-amber-600 animate-pulse font-mono">TESTING...</span>}
+              {isFreshVerifying && <span className="text-[10px] font-mono font-bold text-amber-400 animate-pulse">CHECKING</span>}
             </div>
 
-            <h3 className="text-xs font-extrabold text-slate-900 dark:text-slate-100 uppercase tracking-wide">
+            <h3 className="text-xs font-black uppercase tracking-wider text-heading">
               3. Freshness Guard
             </h3>
-            <div className="text-[11px] font-mono text-slate-500 mt-1">
-              {isFreshFailed ? "Nonce Already Consumed" : "Nonce & Sequence"}
+            <div className="text-[11px] font-mono text-caption mt-1">
+              {isFreshFailed ? "Nonce Reused" : "Nonce & Sequence"}
             </div>
           </div>
 
-          <div className="mt-4 pt-2.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px] font-mono">
-            <span className="text-slate-400">Replay State</span>
-            <span className={`font-bold ${isFreshPassed ? "text-emerald-600" : isFreshFailed ? "text-rose-600" : "text-slate-400"}`}>
+          <div className="mt-4 pt-2 border-t flex items-center justify-between text-[11px] font-mono"
+               style={{ borderColor: "rgb(var(--border))" }}>
+            <span className="text-caption">Replay State</span>
+            <span className={`font-black ${isFreshPassed ? "text-emerald-500" : isFreshFailed ? "text-rose-500" : "text-caption"}`}>
               {isFreshPassed ? "UNSEEN" : isFreshFailed ? "BLOCKED ✕" : "AWAITING"}
             </span>
           </div>
@@ -339,10 +347,10 @@ export const SecurityPipeline: React.FC = () => {
         <div
           className={`relative rounded-2xl border p-4 flex flex-col justify-between transition-all duration-300 ${
             isAuthorized
-              ? "border-emerald-500 bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-xl shadow-emerald-500/25 scale-[1.02]"
+              ? "border-emerald-500 bg-emerald-500 text-white shadow-lg shadow-emerald-500/25 scale-[1.02]"
               : isBlocked
-              ? "border-rose-500/70 bg-rose-50/40 dark:bg-rose-950/20"
-              : "opacity-80"
+              ? "border-rose-500/60 bg-rose-500/10"
+              : ""
           }`}
           style={{
             backgroundColor: isAuthorized ? undefined : isBlocked ? undefined : "rgb(var(--surface-muted))",
@@ -356,34 +364,34 @@ export const SecurityPipeline: React.FC = () => {
                   isAuthorized
                     ? "bg-white text-emerald-600"
                     : isBlocked
-                    ? "bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-200"
-                    : "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                    ? "bg-rose-500/20 text-rose-400"
+                    : "bg-slate-500/20 text-slate-400"
                 }`}
               >
                 {isAuthorized ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
               </div>
 
-              <span className={`text-xs font-mono font-extrabold ${isAuthorized ? "text-white" : isBlocked ? "text-rose-600" : "text-slate-400"}`}>
-                {isAuthorized ? "COMMITTED" : isBlocked ? "DENIED" : "GATE"}
+              <span className={`text-xs font-mono font-black ${isAuthorized ? "text-white" : isBlocked ? "text-rose-500" : "text-caption"}`}>
+                {isAuthorized ? "COMMITTED" : isBlocked ? "DENIED" : "STANDBY"}
               </span>
             </div>
 
-            <h3 className={`text-xs font-extrabold uppercase tracking-wide ${isAuthorized ? "text-white" : "text-slate-900 dark:text-slate-100"}`}>
+            <h3 className={`text-xs font-black uppercase tracking-wider ${isAuthorized ? "text-white" : "text-heading"}`}>
               4. Execution Gate
             </h3>
-            <div className={`text-[11px] font-mono mt-1 ${isAuthorized ? "text-emerald-100" : "text-slate-500"}`}>
-              {isAuthorized ? "Executed in State" : isBlocked ? "Execution Prevented" : "Standby"}
+            <div className={`text-[11px] font-mono mt-1 ${isAuthorized ? "text-emerald-100" : "text-caption"}`}>
+              {isAuthorized ? "Executed in State" : isBlocked ? "Execution Denied" : "Standby"}
             </div>
           </div>
 
           <div
-            className="mt-4 pt-2.5 border-t flex items-center justify-between text-[11px] font-mono"
+            className="mt-4 pt-2 border-t flex items-center justify-between text-[11px] font-mono"
             style={{
-              borderColor: isAuthorized ? "rgba(255,255,255,0.2)" : "rgba(148, 163, 184, 0.2)",
+              borderColor: isAuthorized ? "rgba(255,255,255,0.2)" : "rgb(var(--border))",
             }}
           >
-            <span className={isAuthorized ? "text-emerald-100" : "text-slate-400"}>Action</span>
-            <span className={`font-bold ${isAuthorized ? "text-white" : isBlocked ? "text-rose-600" : "text-slate-400"}`}>
+            <span className={isAuthorized ? "text-emerald-100" : "text-caption"}>Action</span>
+            <span className={`font-black ${isAuthorized ? "text-white" : isBlocked ? "text-rose-500" : "text-caption"}`}>
               {isAuthorized ? "ALLOW ✓" : isBlocked ? "BLOCK ✕" : "WAITING"}
             </span>
           </div>

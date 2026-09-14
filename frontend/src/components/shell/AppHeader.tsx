@@ -3,14 +3,13 @@ import { Shield, Sun, Moon, Zap, Activity } from "lucide-react";
 import { useSecurityStore } from "../../store/securityStore";
 
 export const AppHeader: React.FC = () => {
-  const { theme, setTheme, reducedMotion, setReducedMotion } =
-    useSecurityStore();
+  const { theme, setTheme, reducedMotion, setReducedMotion } = useSecurityStore();
 
   return (
     <header
       className="w-full border-b backdrop-blur-md sticky top-0 z-40 transition-colors"
       style={{
-        backgroundColor: "rgba(var(--surface), 0.85)",
+        backgroundColor: "rgba(var(--surface), 0.9)",
         borderColor: "rgb(var(--border))",
       }}
     >
@@ -18,33 +17,32 @@ export const AppHeader: React.FC = () => {
         {/* Brand identity */}
         <div className="flex items-center gap-3">
           <div
-            className="flex h-10 w-10 items-center justify-center rounded-xl shadow-sm transition-transform hover:scale-105"
+            className="flex h-10 w-10 items-center justify-center rounded-xl shadow-md transition-transform hover:scale-105"
             style={{
               backgroundColor: "rgb(var(--accent-soft))",
               color: "rgb(var(--accent))",
-              border: "1px solid rgb(var(--accent) / 0.3)",
+              border: "1px solid rgb(var(--accent) / 0.4)",
             }}
           >
             <Shield className="h-5 w-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100">
+              <span className="text-lg font-black tracking-tight text-heading">
                 Q-SIGNGUARD
               </span>
               <span
-                className="rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase"
+                className="rounded-full px-2 py-0.5 text-[10px] font-mono font-bold tracking-wider uppercase"
                 style={{
-                  backgroundColor: "rgb(var(--info-soft))",
-                  color: "rgb(var(--info))",
-                  border: "1px solid rgb(var(--info) / 0.25)",
+                  backgroundColor: "rgb(var(--cyan-soft))",
+                  color: "rgb(var(--cyan))",
+                  border: "1px solid rgb(var(--cyan) / 0.4)",
                 }}
-                title="Interactive client simulation of ML-DSA & Context-Aware Replay Gateway"
               >
                 DEMO MODE
               </span>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
+            <p className="text-xs text-caption hidden sm:block">
               Protocol-Aware Security Gateway for Post-Quantum Signatures
             </p>
           </div>
@@ -52,30 +50,30 @@ export const AppHeader: React.FC = () => {
 
         {/* Central Invariant Ticker */}
         <div
-          className="hidden md:flex items-center gap-2 rounded-full px-3.5 py-1 text-xs font-medium"
+          className="hidden md:flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold"
           style={{
             backgroundColor: "rgb(var(--surface-muted))",
-            color: "rgb(var(--foreground))",
+            color: "rgb(var(--text-primary))",
             border: "1px solid rgb(var(--border))",
           }}
         >
           <Zap className="h-3.5 w-3.5 text-amber-500" />
-          <span className="font-semibold text-emerald-600 dark:text-emerald-400">Authenticity</span>
-          <span className="text-slate-400">proves origin</span>
-          <span className="text-slate-400">•</span>
-          <span className="font-semibold text-blue-600 dark:text-blue-400">Context</span>
-          <span className="text-slate-400">proves execution validity</span>
+          <span className="font-bold text-emerald-500">Authenticity</span>
+          <span className="text-caption">proves origin</span>
+          <span className="text-caption">•</span>
+          <span className="font-bold text-indigo-400">Context</span>
+          <span className="text-caption">proves execution validity</span>
         </div>
 
         {/* Status indicator and actions */}
         <div className="flex items-center gap-2.5">
           {/* Gateway Health Indicator */}
           <div
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium"
+            className="flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-mono font-bold"
             style={{
               backgroundColor: "rgb(var(--success-soft))",
               color: "rgb(var(--success))",
-              border: "1px solid rgb(var(--success) / 0.2)",
+              border: "1px solid rgb(var(--success) / 0.3)",
             }}
           >
             <span className="relative flex h-2 w-2">
@@ -89,10 +87,10 @@ export const AppHeader: React.FC = () => {
           <button
             type="button"
             onClick={() => setReducedMotion(!reducedMotion)}
-            className={`flex h-9 w-9 items-center justify-center rounded-lg border text-xs transition-all ${
+            className={`flex h-9 w-9 items-center justify-center rounded-xl border text-xs transition-all ${
               reducedMotion
-                ? "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800"
-                : "border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800"
+                ? "bg-amber-500/10 text-amber-500 border-amber-500/40"
+                : "border-slate-300 dark:border-slate-700 text-caption hover:border-slate-400"
             }`}
             title={reducedMotion ? "Motion: Reduced" : "Motion: Normal"}
             aria-label="Toggle reduced motion"
@@ -100,15 +98,15 @@ export const AppHeader: React.FC = () => {
             <Activity className="h-4 w-4" />
           </button>
 
-          {/* Theme Toggle (Light default / Dark toggle) */}
+          {/* Theme Toggle */}
           <button
             type="button"
             onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border transition-all"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border transition-all hover:scale-105"
             style={{
               borderColor: "rgb(var(--border))",
-              backgroundColor: "rgb(var(--surface))",
-              color: "rgb(var(--foreground))",
+              backgroundColor: "rgb(var(--surface-muted))",
+              color: "rgb(var(--text-primary))",
             }}
             title={theme === "light" ? "Switch to Dark Console Mode" : "Switch to Light Mode"}
             aria-label="Toggle theme"

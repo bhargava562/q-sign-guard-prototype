@@ -50,10 +50,10 @@ export const FloatingNav: React.FC = () => {
               key={item.id}
               type="button"
               onClick={() => setActiveTab(item.id)}
-              className={`relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-150 ${
+              className={`relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition-all duration-150 ${
                 isActive
                   ? "shadow-sm"
-                  : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                  : "hover:scale-102"
               }`}
               style={
                 isActive
@@ -62,19 +62,21 @@ export const FloatingNav: React.FC = () => {
                       color: "rgb(var(--accent))",
                       border: "1px solid rgb(var(--border-strong))",
                     }
-                  : {}
+                  : {
+                      color: "rgb(var(--text-secondary))",
+                    }
               }
             >
               <Icon className="h-4 w-4" />
               <span>{item.label}</span>
               {item.badge && (
                 <span
-                  className="rounded-full px-1.5 py-0.2 text-[10px] font-bold"
+                  className="rounded-full px-1.5 py-0.2 text-[10px] font-mono font-bold"
                   style={{
                     backgroundColor: isActive
                       ? "rgb(var(--accent-soft))"
                       : "rgb(var(--surface))",
-                    color: isActive ? "rgb(var(--accent))" : "rgb(var(--foreground))",
+                    color: isActive ? "rgb(var(--accent))" : "rgb(var(--text-primary))",
                     border: "1px solid rgb(var(--border))",
                   }}
                 >
