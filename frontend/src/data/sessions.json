@@ -1,0 +1,26 @@
+{
+  "sessions": [
+    {
+      "sessionId": "S-4821",
+      "authorizedSigner": "Alice",
+      "status": "active",
+      "baselineSequence": 103,
+      "enclaveCluster": "Asia-South-1 Enclave"
+    },
+    {
+      "sessionId": "S-9901",
+      "authorizedSigner": "treasury_agent_1",
+      "status": "active",
+      "baselineSequence": 500,
+      "enclaveCluster": "Asia-South-1 Enclave"
+    },
+    {
+      "sessionId": "S-REVOKED-44",
+      "authorizedSigner": "Rogue Submitter",
+      "status": "revoked",
+      "baselineSequence": 0,
+      "enclaveCluster": "Asia-South-1 Enclave",
+      "revokedReason": "Compromised credential revocation notice issued"
+    }
+  ]
+}

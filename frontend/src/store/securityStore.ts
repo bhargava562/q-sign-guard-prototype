@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import type {
-  TransactionPayload,
   SignedTransactionPacket,
   CanonicalContext,
   PipelinePhase,
@@ -8,16 +7,15 @@ import type {
   SecurityDecision,
   SecurityStatus,
   ThemeMode,
-  OperatorStage,
+  OperatorViewMode,
   ActiveNavTab,
   OperatorUser,
-  IncomingRequestItem,
+  InboxTransactionItem,
 } from "../types/transaction";
-import { buildCanonicalContext, canonicalizeJson, canonicalStringToBytes } from "../engine/canonicalize";
-import { defaultSignatureProvider } from "../engine/signatureProvider";
+import { buildCanonicalContext, canonicalizeJson } from "../engine/canonicalize";
 import { defaultReplayStore } from "../engine/replayGuard";
 import { evaluateTransactionGateway } from "../engine/decisionEngine";
-import { DEFAULT_INCOMING_REQUESTS, INVALID_REQUEST_SCENARIOS } from "../data/incomingRequests";
+import initialTransactionsData from "../data/transactions.json";
 
 export interface AuditEvent {
   id: string;
@@ -42,19 +40,16 @@ export interface SecurityStoreState {
 
   theme: ThemeMode;
   activeTab: ActiveNavTab;
-  operatorStage: OperatorStage;
   
-  // Incoming Request Queue
-  incomingRequests: IncomingRequestItem[];
-  selectedIncomingRequest: IncomingRequestItem;
-  
-  // Transaction & Cryptographic State
-  payload: TransactionPayload;
-  canonicalContext: CanonicalContext | null;
+  // Transaction Inbox & Review State
+  inboxItems: InboxTransactionItem[];
+  selectedTransaction: InboxTransactionItem | null;
+  operatorViewMode: OperatorViewMode;
+  inboxFilter: "all" | "pending" | "authorized" | "blocked";
+
+  // Active Verification Packet & Cryptographic State
   activePacket: SignedTransactionPacket | null;
-  baselineAuthorizedPacket: SignedTransactionPacket | null;
-  
-  // Pipeline & Guard State
+  canonicalContext: CanonicalContext | null;
   pipelinePhase: PipelinePhase;
   lifecycleState: LifecycleState;
   guardStates: {
@@ -63,13 +58,13 @@ export interface SecurityStoreState {
     freshnessPassed: boolean | null;
   };
   lastDecision: SecurityDecision | null;
-  
+
   // Audit Ledger & Evidence Drawer
   auditEvents: AuditEvent[];
   evidenceDrawerOpen: boolean;
   activeEvidencePacket: SignedTransactionPacket | null;
   activeEvidenceDecision: SecurityDecision | null;
-  
+
   // Controls
   isProcessing: boolean;
   reducedMotion: boolean;
@@ -77,20 +72,18 @@ export interface SecurityStoreState {
   // Actions
   setTheme: (theme: ThemeMode) => void;
   setActiveTab: (tab: ActiveNavTab) => void;
-  setOperatorStage: (stage: OperatorStage) => void;
-  selectIncomingRequest: (req: IncomingRequestItem) => void;
+  setInboxFilter: (filter: "all" | "pending" | "authorized" | "blocked") => void;
+  selectTransactionForReview: (item: InboxTransactionItem) => void;
+  returnToInbox: () => void;
   setReducedMotion: (enabled: boolean) => void;
-  
+
   // Evidence Drawer Actions
   openEvidenceSheet: (packet?: SignedTransactionPacket, decision?: SecurityDecision) => void;
   closeEvidenceSheet: () => void;
-  
-  // Core Operator Workflow Actions
-  verifyAndProcess: () => Promise<void>;
-  triggerDuplicateArrival: () => void;
-  processDuplicate: () => Promise<void>;
-  testInvalidScenario: (scenarioId: string) => Promise<void>;
-  resetToIncoming: () => void;
+
+  // Execution Workflow
+  verifyAndExecute: () => Promise<void>;
+  resetInbox: () => void;
 }
 
 function getInitialTheme(): ThemeMode {
@@ -111,38 +104,29 @@ const DEFAULT_OPERATOR: OperatorUser = {
 };
 
 export const useSecurityStore = create<SecurityStoreState>((set, get) => {
-  const initialRequest = DEFAULT_INCOMING_REQUESTS[0];
-  const now = new Date();
-  
-  const initialPayload: TransactionPayload = {
-    message: initialRequest.message,
-    sender: initialRequest.sender,
-    receiver: initialRequest.receiver,
-    sessionId: initialRequest.sessionId,
-    nonce: "N-88321",
-    sequence: 104,
-    issuedAt: now.toISOString(),
-    expiresAt: new Date(now.getTime() + 15 * 60 * 1000).toISOString(),
-  };
+  const initialItems = JSON.parse(JSON.stringify(initialTransactionsData)) as InboxTransactionItem[];
 
   return {
     isAuthenticated: false,
     currentUser: DEFAULT_OPERATOR,
-    loginDemo: () => set({ isAuthenticated: true, activeTab: "transactions", operatorStage: "incoming" }),
+    loginDemo: () =>
+      set({
+        isAuthenticated: true,
+        activeTab: "transactions",
+        operatorViewMode: "inbox",
+      }),
     logout: () => set({ isAuthenticated: false }),
 
     theme: getInitialTheme(),
     activeTab: "transactions",
-    operatorStage: "incoming",
-    
-    incomingRequests: DEFAULT_INCOMING_REQUESTS,
-    selectedIncomingRequest: initialRequest,
-    
-    payload: initialPayload,
-    canonicalContext: null,
+
+    inboxItems: initialItems,
+    selectedTransaction: null,
+    operatorViewMode: "inbox",
+    inboxFilter: "all",
+
     activePacket: null,
-    baselineAuthorizedPacket: null,
-    
+    canonicalContext: null,
     pipelinePhase: "idle",
     lifecycleState: "EMPTY",
     guardStates: {
@@ -151,12 +135,12 @@ export const useSecurityStore = create<SecurityStoreState>((set, get) => {
       freshnessPassed: null,
     },
     lastDecision: null,
-    
+
     auditEvents: [],
     evidenceDrawerOpen: false,
     activeEvidencePacket: null,
     activeEvidenceDecision: null,
-    
+
     isProcessing: false,
     reducedMotion: false,
 
@@ -172,35 +156,38 @@ export const useSecurityStore = create<SecurityStoreState>((set, get) => {
       set({ theme });
     },
 
-    setActiveTab: (activeTab) => set({ activeTab }),
-    setOperatorStage: (operatorStage) => set({ operatorStage }),
-    setReducedMotion: (reducedMotion) => set({ reducedMotion }),
+    setActiveTab: (activeTab) => {
+      set({ activeTab });
+      if (activeTab === "transactions") {
+        // Return to inbox when navigating to transactions
+        set({ operatorViewMode: "inbox" });
+      }
+    },
 
-    selectIncomingRequest: (req: IncomingRequestItem) => {
-      const now = new Date();
-      const lastSeq = defaultReplayStore.getLastSequence(req.sessionId) ?? 103;
-      const nextPayload: TransactionPayload = {
-        message: req.message,
-        sender: req.sender,
-        receiver: req.receiver,
-        sessionId: req.sessionId,
-        nonce: `N-${Math.floor(10000 + Math.random() * 90000)}`,
-        sequence: lastSeq + 1,
-        issuedAt: now.toISOString(),
-        expiresAt: new Date(now.getTime() + 15 * 60 * 1000).toISOString(),
-      };
+    setInboxFilter: (inboxFilter) => set({ inboxFilter }),
+
+    selectTransactionForReview: (item) => {
       set({
-        selectedIncomingRequest: req,
-        payload: nextPayload,
-        operatorStage: "incoming",
-        pipelinePhase: "idle",
-        lifecycleState: "EMPTY",
+        selectedTransaction: item,
+        operatorViewMode: "review",
+        guardStates: { signaturePassed: null, contextPassed: null, freshnessPassed: null },
+        lastDecision: null,
+      });
+    },
+
+    returnToInbox: () => {
+      set({
+        operatorViewMode: "inbox",
+        selectedTransaction: null,
+        activePacket: null,
         guardStates: { signaturePassed: null, contextPassed: null, freshnessPassed: null },
       });
     },
 
+    setReducedMotion: (reducedMotion) => set({ reducedMotion }),
+
     openEvidenceSheet: (packet, decision) => {
-      const p = packet || get().activePacket || get().baselineAuthorizedPacket;
+      const p = packet || get().activePacket;
       const d = decision || get().lastDecision;
       set({
         evidenceDrawerOpen: true,
@@ -211,225 +198,63 @@ export const useSecurityStore = create<SecurityStoreState>((set, get) => {
 
     closeEvidenceSheet: () => set({ evidenceDrawerOpen: false }),
 
-    verifyAndProcess: async () => {
-      const { payload, reducedMotion, selectedIncomingRequest } = get();
-      const stepDelay = reducedMotion ? 0 : 250;
+    verifyAndExecute: async () => {
+      const { selectedTransaction, reducedMotion } = get();
+      if (!selectedTransaction) return;
+
+      const stepDelay = reducedMotion ? 0 : 300;
 
       set({
         isProcessing: true,
-        operatorStage: "verifying",
+        operatorViewMode: "corridor",
         lifecycleState: "PROCESSING",
         pipelinePhase: "collecting",
         guardStates: { signaturePassed: null, contextPassed: null, freshnessPassed: null },
       });
 
-      // 1. Build Canonical Context & Sign (deterministic simulation)
+      // 1. Build Canonical Context from the incoming packet
+      const payload = {
+        message: selectedTransaction.transaction.message,
+        sender: selectedTransaction.transaction.sender,
+        receiver: selectedTransaction.transaction.receiver,
+        sessionId: selectedTransaction.securityContext.sessionId,
+        nonce: selectedTransaction.securityContext.nonce,
+        sequence: selectedTransaction.securityContext.sequence,
+        issuedAt: selectedTransaction.securityContext.issuedAt,
+        expiresAt: selectedTransaction.securityContext.expiresAt,
+      };
+
       const canonicalContext = buildCanonicalContext(payload);
       const canonicalJson = canonicalizeJson(canonicalContext);
-      const canonicalBytes = canonicalStringToBytes(canonicalJson);
 
       set({ pipelinePhase: "canonicalizing", canonicalContext });
       if (stepDelay) await sleep(stepDelay);
 
-      set({ pipelinePhase: "signing" });
-      const signResult = await defaultSignatureProvider.sign(canonicalBytes);
-      if (stepDelay) await sleep(stepDelay);
-
+      // Packet with attached signature from the incoming request
       const packet: SignedTransactionPacket = {
-        id: selectedIncomingRequest.requestId || `TX-${payload.sequence}`,
+        id: selectedTransaction.requestId,
         payload,
         canonicalJson,
-        contextHashHex: signResult.contextHashHex,
-        signatureHex: signResult.signatureHex,
-        algorithm: defaultSignatureProvider.algorithm,
-        publicKeyHex: signResult.publicKeyHex,
+        contextHashHex: selectedTransaction.signature.contextHashHex,
+        signatureHex: selectedTransaction.signature.signatureHex,
+        algorithm: selectedTransaction.signature.algorithm,
+        publicKeyHex: selectedTransaction.signature.publicKeyHex,
+        publicKeyFingerprint: selectedTransaction.signature.publicKeyFingerprint,
       };
 
       set({ activePacket: packet, pipelinePhase: "verifying-signature" });
       if (stepDelay) await sleep(stepDelay);
 
-      // 2. Gateway Guard Evaluations
+      // 2. Gateway Security Guard Evaluation
       const { decision, guards } = await evaluateTransactionGateway(packet);
 
-      // Guard 1: Authenticity
+      // Step A: Authenticity Guard
       set({
         guardStates: { signaturePassed: guards.signaturePassed, contextPassed: null, freshnessPassed: null },
       });
       if (stepDelay) await sleep(stepDelay);
 
-      // Guard 2: Context
-      set({
-        pipelinePhase: "checking-context",
-        guardStates: { signaturePassed: guards.signaturePassed, contextPassed: guards.contextPassed, freshnessPassed: null },
-      });
-      if (stepDelay) await sleep(stepDelay);
-
-      // Guard 3: Freshness
-      set({
-        pipelinePhase: "checking-freshness",
-        guardStates: { signaturePassed: guards.signaturePassed, contextPassed: guards.contextPassed, freshnessPassed: guards.freshnessPassed },
-      });
-      if (stepDelay) await sleep(stepDelay);
-
-      // 3. Execution Outcome
-      if (decision.status === "accepted") {
-        set({
-          operatorStage: "authorized",
-          pipelinePhase: "authorized",
-          lifecycleState: "SUCCESS",
-          baselineAuthorizedPacket: packet,
-          lastDecision: decision,
-          isProcessing: false,
-        });
-
-        get().auditEvents.unshift({
-          id: `EV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          timestamp: new Date().toLocaleTimeString(),
-          transactionId: packet.id,
-          summary: `AUTHORIZED: ${packet.payload.message}`,
-          status: "accepted",
-          authenticity: "valid",
-          execution: "authorized",
-          ruleViolated: "NONE",
-          reason: "Cryptographically authentic and fresh context",
-          packet,
-          decision,
-        });
-      } else {
-        set({
-          operatorStage: "blocked",
-          pipelinePhase: "blocked",
-          lifecycleState: "BLOCKED",
-          lastDecision: decision,
-          isProcessing: false,
-        });
-
-        get().auditEvents.unshift({
-          id: `EV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          timestamp: new Date().toLocaleTimeString(),
-          transactionId: packet.id,
-          summary: `BLOCKED: ${decision.reason}`,
-          status: decision.status,
-          authenticity: decision.authenticity,
-          execution: decision.execution,
-          ruleViolated: decision.ruleViolated,
-          reason: decision.reason,
-          packet,
-          decision,
-        });
-      }
-    },
-
-    triggerDuplicateArrival: () => {
-      set({
-        operatorStage: "duplicate-arrived",
-        pipelinePhase: "idle",
-        lifecycleState: "EMPTY",
-        guardStates: { signaturePassed: null, contextPassed: null, freshnessPassed: null },
-      });
-    },
-
-    processDuplicate: async () => {
-      const { baselineAuthorizedPacket, reducedMotion } = get();
-      if (!baselineAuthorizedPacket) return;
-
-      const stepDelay = reducedMotion ? 0 : 250;
-      set({
-        isProcessing: true,
-        operatorStage: "duplicate-verifying",
-        lifecycleState: "PROCESSING",
-        pipelinePhase: "verifying-signature",
-        activePacket: baselineAuthorizedPacket,
-        guardStates: { signaturePassed: null, contextPassed: null, freshnessPassed: null },
-      });
-
-      if (stepDelay) await sleep(stepDelay);
-
-      // Re-evaluate the EXACT same packet
-      const { decision, guards } = await evaluateTransactionGateway(baselineAuthorizedPacket);
-
-      // Guard 1: Signature is STILL VALID
-      set({
-        guardStates: { signaturePassed: guards.signaturePassed, contextPassed: null, freshnessPassed: null },
-      });
-      if (stepDelay) await sleep(stepDelay);
-
-      // Guard 2: Context is STILL VALID
-      set({
-        pipelinePhase: "checking-context",
-        guardStates: { signaturePassed: guards.signaturePassed, contextPassed: guards.contextPassed, freshnessPassed: null },
-      });
-      if (stepDelay) await sleep(stepDelay);
-
-      // Guard 3: Freshness FAILS (Reused Nonce!)
-      set({
-        pipelinePhase: "checking-freshness",
-        guardStates: { signaturePassed: guards.signaturePassed, contextPassed: guards.contextPassed, freshnessPassed: guards.freshnessPassed },
-      });
-      if (stepDelay) await sleep(stepDelay);
-
-      // Execution Gate: BLOCKED
-      set({
-        operatorStage: "blocked",
-        pipelinePhase: "blocked",
-        lifecycleState: "BLOCKED",
-        lastDecision: decision,
-        isProcessing: false,
-      });
-
-      get().auditEvents.unshift({
-        id: `EV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        timestamp: new Date().toLocaleTimeString(),
-        transactionId: baselineAuthorizedPacket.id,
-        summary: `REPLAY BLOCKED: Duplicate request authorization already consumed`,
-        status: "blocked",
-        authenticity: "valid",
-        execution: "blocked",
-        ruleViolated: decision.ruleViolated,
-        reason: decision.reason,
-        packet: baselineAuthorizedPacket,
-        decision,
-      });
-    },
-
-    testInvalidScenario: async (scenarioId: string) => {
-      const { baselineAuthorizedPacket, payload, reducedMotion } = get();
-      const basePacket = baselineAuthorizedPacket || {
-        id: `TX-${payload.sequence}`,
-        payload,
-        canonicalJson: canonicalizeJson(buildCanonicalContext(payload)),
-        contextHashHex: "simulated_hash",
-        signatureHex: "simulated_sig",
-        algorithm: "ML-DSA-65",
-        publicKeyHex: "pk_sim",
-      };
-
-      const scenario = INVALID_REQUEST_SCENARIOS.find((s) => s.id === scenarioId);
-      if (!scenario) return;
-
-      const mutatedPacket = await scenario.applyMutation(basePacket);
-      const stepDelay = reducedMotion ? 0 : 250;
-
-      set({
-        isProcessing: true,
-        operatorStage: "verifying",
-        lifecycleState: "PROCESSING",
-        pipelinePhase: "verifying-signature",
-        activePacket: mutatedPacket,
-        guardStates: { signaturePassed: null, contextPassed: null, freshnessPassed: null },
-      });
-
-      if (stepDelay) await sleep(stepDelay);
-
-      const { decision, guards } = await evaluateTransactionGateway(mutatedPacket);
-
-      // Step 1: Signature
-      set({
-        guardStates: { signaturePassed: guards.signaturePassed, contextPassed: null, freshnessPassed: null },
-      });
-      if (stepDelay) await sleep(stepDelay);
-
-      // Step 2: Context
+      // Step B: Context Guard
       if (guards.signaturePassed) {
         set({
           pipelinePhase: "checking-context",
@@ -438,7 +263,7 @@ export const useSecurityStore = create<SecurityStoreState>((set, get) => {
         if (stepDelay) await sleep(stepDelay);
       }
 
-      // Step 3: Freshness
+      // Step C: Freshness Guard
       if (guards.signaturePassed && guards.contextPassed) {
         set({
           pipelinePhase: "checking-freshness",
@@ -447,47 +272,58 @@ export const useSecurityStore = create<SecurityStoreState>((set, get) => {
         if (stepDelay) await sleep(stepDelay);
       }
 
+      // 3. Execution Decision
+      const isAccepted = decision.status === "accepted";
+      const updatedStatus = isAccepted ? ("authorized" as const) : ("blocked" as const);
+
+      const updatedItem: InboxTransactionItem = {
+        ...selectedTransaction,
+        reviewStatus: updatedStatus,
+        evaluatedDecision: decision,
+      };
+
+      const updatedInbox = get().inboxItems.map((item) =>
+        item.requestId === selectedTransaction.requestId ? updatedItem : item
+      );
+
       set({
-        operatorStage: "blocked",
-        pipelinePhase: "blocked",
-        lifecycleState: "BLOCKED",
+        inboxItems: updatedInbox,
+        selectedTransaction: updatedItem,
+        operatorViewMode: "receipt",
+        pipelinePhase: isAccepted ? "authorized" : "blocked",
+        lifecycleState: isAccepted ? "SUCCESS" : "BLOCKED",
         lastDecision: decision,
         isProcessing: false,
       });
 
+      // Append to audit events
       get().auditEvents.unshift({
         id: `EV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         timestamp: new Date().toLocaleTimeString(),
-        transactionId: mutatedPacket.id,
-        summary: `BLOCKED: ${scenario.title} (${decision.reason})`,
+        transactionId: packet.id,
+        summary: isAccepted
+          ? `AUTHORIZED: ${packet.payload.message}`
+          : `BLOCKED: ${decision.reason}`,
         status: decision.status,
         authenticity: decision.authenticity,
         execution: decision.execution,
         ruleViolated: decision.ruleViolated,
         reason: decision.reason,
-        packet: mutatedPacket,
+        packet,
         decision,
       });
     },
 
-    resetToIncoming: () => {
-      const { selectedIncomingRequest } = get();
-      const lastSeq = defaultReplayStore.getLastSequence(selectedIncomingRequest.sessionId) ?? 104;
-      const now = new Date();
-      
+    resetInbox: () => {
+      defaultReplayStore.reset();
+      const freshItems = JSON.parse(JSON.stringify(initialTransactionsData)) as InboxTransactionItem[];
       set({
-        operatorStage: "incoming",
-        pipelinePhase: "idle",
-        lifecycleState: "EMPTY",
-        guardStates: { signaturePassed: null, contextPassed: null, freshnessPassed: null },
+        inboxItems: freshItems,
+        selectedTransaction: null,
+        operatorViewMode: "inbox",
+        activePacket: null,
         lastDecision: null,
-        payload: {
-          ...get().payload,
-          nonce: `N-${Math.floor(10000 + Math.random() * 90000)}`,
-          sequence: lastSeq + 1,
-          issuedAt: now.toISOString(),
-          expiresAt: new Date(now.getTime() + 15 * 60 * 1000).toISOString(),
-        },
+        guardStates: { signaturePassed: null, contextPassed: null, freshnessPassed: null },
       });
     },
   };

@@ -66,6 +66,7 @@ export interface SignedTransactionPacket {
   signatureHex: string;
   algorithm: string;
   publicKeyHex: string;
+  publicKeyFingerprint?: string;
   tamperedMessage?: string;
   tamperedSessionId?: string;
 }
@@ -101,6 +102,12 @@ export type OperatorStage =
   | "duplicate-verifying"
   | "blocked";
 
+export type OperatorViewMode =
+  | "inbox"
+  | "review"
+  | "corridor"
+  | "receipt";
+
 export type ActiveNavTab = "transactions" | "events" | "system";
 
 export interface OperatorUser {
@@ -108,6 +115,48 @@ export interface OperatorUser {
   email: string;
   role: string;
   enclave: string;
+}
+
+export type FixtureCondition =
+  | "legitimate"
+  | "replay"
+  | "tampered"
+  | "expired"
+  | "sequenceViolation"
+  | "contextViolation";
+
+export interface SignatureMetadata {
+  algorithm: string;
+  status: "valid" | "invalid";
+  publicKeyFingerprint: string;
+  publicKeyHex: string;
+  signatureHex: string;
+  contextHashHex: string;
+}
+
+export interface InboxTransactionItem {
+  requestId: string;
+  receivedAt: string;
+  source: string;
+  transaction: {
+    sender: string;
+    receiver: string;
+    amount: number;
+    currency: string;
+    formattedAmount: string;
+    message: string;
+  };
+  securityContext: {
+    sessionId: string;
+    nonce: string;
+    sequence: number;
+    issuedAt: string;
+    expiresAt: string;
+  };
+  signature: SignatureMetadata;
+  fixtureCondition: FixtureCondition;
+  reviewStatus: "pending" | "authorized" | "blocked";
+  evaluatedDecision?: SecurityDecision;
 }
 
 export interface IncomingRequestItem {
@@ -120,4 +169,3 @@ export interface IncomingRequestItem {
   message: string;
   sessionId: string;
 }
-

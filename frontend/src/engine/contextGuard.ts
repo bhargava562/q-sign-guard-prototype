@@ -6,9 +6,14 @@ export interface ContextGuardResult {
   evidence: EvidenceItem[];
 }
 
-const AUTHORIZED_SENDERS = new Set(["Alice", "treasury_agent_1", "hot_wallet_corp"]);
-const AUTHORIZED_RECEIVERS = new Set(["Bob", "Charlie", "cold_storage_vault", "merchant_gateway"]);
-const ACTIVE_SESSIONS = new Set(["S-4821", "S-9901", "S-DEFAULT"]);
+import identitiesData from "../data/identities.json";
+import sessionsData from "../data/sessions.json";
+
+const AUTHORIZED_SENDERS = new Set(identitiesData.authorizedSenders.map((s) => s.id));
+const AUTHORIZED_RECEIVERS = new Set(identitiesData.authorizedReceivers);
+const ACTIVE_SESSIONS = new Set(
+  sessionsData.sessions.filter((s) => s.status === "active").map((s) => s.sessionId)
+);
 
 export function evaluateContextGuard(packet: SignedTransactionPacket): ContextGuardResult {
   const { sender, receiver, sessionId } = packet.payload;

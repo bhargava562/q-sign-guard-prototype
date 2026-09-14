@@ -1,0 +1,242 @@
+[
+  {
+    "requestId": "TX-104",
+    "receivedAt": "18 sec ago",
+    "source": "Payment API (v2)",
+    "transaction": {
+      "sender": "Alice",
+      "receiver": "Bob",
+      "amount": 10000,
+      "currency": "INR",
+      "formattedAmount": "₹10,000",
+      "message": "Transfer ₹10,000 to Bob"
+    },
+    "securityContext": {
+      "sessionId": "S-4821",
+      "nonce": "N-88321",
+      "sequence": 104,
+      "issuedAt": "2026-09-14T19:40:00.000Z",
+      "expiresAt": "2026-09-14T19:55:00.000Z"
+    },
+    "signature": {
+      "algorithm": "ML-DSA-65",
+      "status": "valid",
+      "publicKeyFingerprint": "7A:91:4F:2D:8C:77:E1:90:3B:5A:6D:88",
+      "publicKeyHex": "04a1b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcde",
+      "signatureHex": "3045022100e4b8a192c7d3f84102938475610293847561029384756102938475610293847502202f8a9b1c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcd",
+      "contextHashHex": "e8e040a4305bc8c96c4b228990b5a3f2d1847c94541bf5632a0c7ebcf7f1e290"
+    },
+    "fixtureCondition": "legitimate",
+    "reviewStatus": "pending"
+  },
+  {
+    "requestId": "TX-105",
+    "receivedAt": "42 sec ago",
+    "source": "Settlement Engine",
+    "transaction": {
+      "sender": "treasury_agent_1",
+      "receiver": "cold_storage_vault",
+      "amount": 250000,
+      "currency": "USDC",
+      "formattedAmount": "250,000 USDC",
+      "message": "Vault Transfer: 250,000 USDC"
+    },
+    "securityContext": {
+      "sessionId": "S-9901",
+      "nonce": "N-91204",
+      "sequence": 501,
+      "issuedAt": "2026-09-14T19:39:20.000Z",
+      "expiresAt": "2026-09-14T19:54:20.000Z"
+    },
+    "signature": {
+      "algorithm": "ML-DSA-65",
+      "status": "valid",
+      "publicKeyFingerprint": "9F:88:1C:33:AA:4B:EE:71:02:44:D1:6A",
+      "publicKeyHex": "04b2c3d4e5f6a10718293a4b5c6d7e8f90123456789abcdef0123456789abcde",
+      "signatureHex": "30450221008899aabbccddeeff00112233445566778899aabbccddeeff00112233445566770220112233445566778899aabbccddeeff00112233445566778899aabbccddeeff00",
+      "contextHashHex": "5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b"
+    },
+    "fixtureCondition": "legitimate",
+    "reviewStatus": "pending"
+  },
+  {
+    "requestId": "TX-106",
+    "receivedAt": "1 min ago",
+    "source": "Payment API (v2)",
+    "transaction": {
+      "sender": "Alice",
+      "receiver": "Bob",
+      "amount": 10000,
+      "currency": "INR",
+      "formattedAmount": "₹10,000",
+      "message": "Transfer ₹10,000 to Bob"
+    },
+    "securityContext": {
+      "sessionId": "S-4821",
+      "nonce": "N-88321",
+      "sequence": 104,
+      "issuedAt": "2026-09-14T19:40:00.000Z",
+      "expiresAt": "2026-09-14T19:55:00.000Z"
+    },
+    "signature": {
+      "algorithm": "ML-DSA-65",
+      "status": "valid",
+      "publicKeyFingerprint": "7A:91:4F:2D:8C:77:E1:90:3B:5A:6D:88",
+      "publicKeyHex": "04a1b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcde",
+      "signatureHex": "3045022100e4b8a192c7d3f84102938475610293847561029384756102938475610293847502202f8a9b1c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcd",
+      "contextHashHex": "e8e040a4305bc8c96c4b228990b5a3f2d1847c94541bf5632a0c7ebcf7f1e290"
+    },
+    "fixtureCondition": "replay",
+    "reviewStatus": "pending"
+  },
+  {
+    "requestId": "TX-107",
+    "receivedAt": "2 min ago",
+    "source": "Merchant Network",
+    "transaction": {
+      "sender": "hot_wallet_corp",
+      "receiver": "merchant_gateway",
+      "amount": 45500,
+      "currency": "INR",
+      "formattedAmount": "₹45,500",
+      "message": "Merchant Settlement ₹45,500 (Altered in transit)"
+    },
+    "securityContext": {
+      "sessionId": "S-4821",
+      "nonce": "N-10293",
+      "sequence": 105,
+      "issuedAt": "2026-09-14T19:38:00.000Z",
+      "expiresAt": "2026-09-14T19:53:00.000Z"
+    },
+    "signature": {
+      "algorithm": "ML-DSA-65",
+      "status": "invalid",
+      "publicKeyFingerprint": "B2:55:7E:11:9C:34:F0:82:1D:99:CC:53",
+      "publicKeyHex": "04c3d4e5f6a1b20718293a4b5c6d7e8f90123456789abcdef0123456789abcde",
+      "signatureHex": "3045022100bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad00220f00df00df00df00df00df00df00df00df00df00df00df00df00df00df00d",
+      "contextHashHex": "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
+    },
+    "fixtureCondition": "tampered",
+    "reviewStatus": "pending"
+  },
+  {
+    "requestId": "TX-108",
+    "receivedAt": "3 min ago",
+    "source": "Payroll Automation",
+    "transaction": {
+      "sender": "Payroll Automation",
+      "receiver": "Employee Accounts",
+      "amount": 180000,
+      "currency": "INR",
+      "formattedAmount": "₹180,000",
+      "message": "Monthly Compensation Disbursal"
+    },
+    "securityContext": {
+      "sessionId": "S-4821",
+      "nonce": "N-77412",
+      "sequence": 105,
+      "issuedAt": "2026-09-14T18:00:00.000Z",
+      "expiresAt": "2026-09-14T18:15:00.000Z"
+    },
+    "signature": {
+      "algorithm": "ML-DSA-65",
+      "status": "valid",
+      "publicKeyFingerprint": "E1:67:3A:90:BB:22:CD:45:8F:09:12:34",
+      "publicKeyHex": "04d4e5f6a1b2c30718293a4b5c6d7e8f90123456789abcdef0123456789abcde",
+      "signatureHex": "3045022100778899aabbccddeeff00112233445566778899aabbccddeeff001122330220aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899",
+      "contextHashHex": "778899aabbccddeeff00112233445566778899aabbccddeeff00112233445566"
+    },
+    "fixtureCondition": "expired",
+    "reviewStatus": "pending"
+  },
+  {
+    "requestId": "TX-109",
+    "receivedAt": "4 min ago",
+    "source": "Clearing Gateway",
+    "transaction": {
+      "sender": "Liquidity Bot 4",
+      "receiver": "Exchange Hot Wallet",
+      "amount": 75000,
+      "currency": "USDT",
+      "formattedAmount": "75,000 USDT",
+      "message": "Market Liquidity Rebalance"
+    },
+    "securityContext": {
+      "sessionId": "S-4821",
+      "nonce": "N-39102",
+      "sequence": 160,
+      "issuedAt": "2026-09-14T19:35:00.000Z",
+      "expiresAt": "2026-09-14T19:50:00.000Z"
+    },
+    "signature": {
+      "algorithm": "ML-DSA-65",
+      "status": "valid",
+      "publicKeyFingerprint": "F3:44:8D:12:0A:77:8E:99:BC:21:45:67",
+      "publicKeyHex": "04e5f6a1b2c3d40718293a4b5c6d7e8f90123456789abcdef0123456789abcde",
+      "signatureHex": "3045022100ffeeddccbbaa99887766554433221100ffeeddccbbaa998877665544330220123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0",
+      "contextHashHex": "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899"
+    },
+    "fixtureCondition": "sequenceViolation",
+    "reviewStatus": "pending"
+  },
+  {
+    "requestId": "TX-110",
+    "receivedAt": "5 min ago",
+    "source": "External Ingress",
+    "transaction": {
+      "sender": "Rogue Submitter",
+      "receiver": "cold_storage_vault",
+      "amount": 500000,
+      "currency": "INR",
+      "formattedAmount": "₹500,000",
+      "message": "Emergency Settlement Override"
+    },
+    "securityContext": {
+      "sessionId": "S-REVOKED-44",
+      "nonce": "N-00042",
+      "sequence": 1,
+      "issuedAt": "2026-09-14T19:34:00.000Z",
+      "expiresAt": "2026-09-14T19:49:00.000Z"
+    },
+    "signature": {
+      "algorithm": "ML-DSA-65",
+      "status": "valid",
+      "publicKeyFingerprint": "7A:91:4F:2D:8C:77:E1:90:3B:5A:6D:88",
+      "publicKeyHex": "04a1b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcde",
+      "signatureHex": "3045022100102030405060708090a0b0c0d0e0f00112233445566778899aabbccdde022099887766554433221100ffeeddccbbaa99887766554433221100ffeeddccbbaa",
+      "contextHashHex": "102030405060708090a0b0c0d0e0f00112233445566778899aabbccddeeff001"
+    },
+    "fixtureCondition": "contextViolation",
+    "reviewStatus": "pending"
+  },
+  {
+    "requestId": "TX-111",
+    "receivedAt": "6 min ago",
+    "source": "ERP Payment Pipeline",
+    "transaction": {
+      "sender": "Dave",
+      "receiver": "Supply Chain Logistics",
+      "amount": 32400,
+      "currency": "INR",
+      "formattedAmount": "₹32,400",
+      "message": "Hardware Component Settlement"
+    },
+    "securityContext": {
+      "sessionId": "S-4821",
+      "nonce": "N-44219",
+      "sequence": 105,
+      "issuedAt": "2026-09-14T19:33:00.000Z",
+      "expiresAt": "2026-09-14T19:48:00.000Z"
+    },
+    "signature": {
+      "algorithm": "ML-DSA-65",
+      "status": "valid",
+      "publicKeyFingerprint": "C4:19:8B:77:E2:01:A5:63:F8:32:11:0B",
+      "publicKeyHex": "04f6a1b2c3d4e50718293a4b5c6d7e8f90123456789abcdef0123456789abcde",
+      "signatureHex": "3045022100445566778899aabbccddeeff00112233445566778899aabbccddeeff00022033445566778899aabbccddeeff00112233445566778899aabbccddeeff001122",
+      "contextHashHex": "445566778899aabbccddeeff00112233445566778899aabbccddeeff00112233"
+    },
+    "fixtureCondition": "legitimate",
+    "reviewStatus": "pending"
+  }
+]

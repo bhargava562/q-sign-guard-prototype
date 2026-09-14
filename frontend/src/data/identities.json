@@ -1,0 +1,60 @@
+{
+  "authorizedSenders": [
+    {
+      "id": "Alice",
+      "name": "Alice M.",
+      "role": "Corporate Treasury Executive",
+      "publicKeyFingerprint": "7A:91:4F:2D:8C:77:E1:90:3B:5A:6D:88",
+      "algorithm": "ML-DSA-65",
+      "status": "active"
+    },
+    {
+      "id": "treasury_agent_1",
+      "name": "Treasury Settlement Daemon #1",
+      "role": "Autonomous Liquidity Agent",
+      "publicKeyFingerprint": "9F:88:1C:33:AA:4B:EE:71:02:44:D1:6A",
+      "algorithm": "ML-DSA-65",
+      "status": "active"
+    },
+    {
+      "id": "hot_wallet_corp",
+      "name": "Corporate Hot Wallet Agent",
+      "role": "Disbursement Service",
+      "publicKeyFingerprint": "B2:55:7E:11:9C:34:F0:82:1D:99:CC:53",
+      "algorithm": "ML-DSA-65",
+      "status": "active"
+    },
+    {
+      "id": "Dave",
+      "name": "Dave K. (ERP Ingress)",
+      "role": "Supply Chain Dispatcher",
+      "publicKeyFingerprint": "C4:19:8B:77:E2:01:A5:63:F8:32:11:0B",
+      "algorithm": "ML-DSA-65",
+      "status": "active"
+    },
+    {
+      "id": "Payroll Automation",
+      "name": "Payroll Dispatch Service",
+      "role": "Automated HR Dispatch",
+      "publicKeyFingerprint": "E1:67:3A:90:BB:22:CD:45:8F:09:12:34",
+      "algorithm": "ML-DSA-65",
+      "status": "active"
+    },
+    {
+      "id": "Liquidity Bot 4",
+      "name": "Clearing Liquidity Bot #4",
+      "role": "High Frequency Settlement",
+      "publicKeyFingerprint": "F3:44:8D:12:0A:77:8E:99:BC:21:45:67",
+      "algorithm": "ML-DSA-65",
+      "status": "active"
+    }
+  ],
+  "authorizedReceivers": [
+    "Bob",
+    "cold_storage_vault",
+    "merchant_gateway",
+    "Employee Accounts",
+    "Exchange Hot Wallet",
+    "Supply Chain Logistics"
+  ]
+}
