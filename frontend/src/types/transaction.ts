@@ -69,6 +69,7 @@ export interface SignedTransactionPacket {
   publicKeyFingerprint?: string;
   tamperedMessage?: string;
   tamperedSessionId?: string;
+  fixtureCondition?: FixtureCondition;
 }
 
 export type PipelinePhase =

@@ -242,7 +242,7 @@ export const useSecurityStore = create<SecurityStoreState>((set, get) => {
       const { selectedTransaction, reducedMotion } = get();
       if (!selectedTransaction) return;
 
-      const traceDelayMs = reducedMotion ? 60 : 380;
+      const traceDelayMs = reducedMotion ? 60 : 750;
 
       set({
         isProcessing: true,
@@ -282,6 +282,7 @@ export const useSecurityStore = create<SecurityStoreState>((set, get) => {
         algorithm: selectedTransaction.signature.algorithm,
         publicKeyHex: selectedTransaction.signature.publicKeyHex,
         publicKeyFingerprint: selectedTransaction.signature.publicKeyFingerprint,
+        fixtureCondition: selectedTransaction.fixtureCondition,
       };
 
       set({ activePacket: packet });
@@ -314,9 +315,9 @@ export const useSecurityStore = create<SecurityStoreState>((set, get) => {
         traceDelayMs,
       });
 
-      // Give evaluator 650ms to digest the final execution gate status
+      // Give evaluator 1200ms to visually digest the final execution gate status
       if (!reducedMotion) {
-        await sleep(650);
+        await sleep(1200);
       }
 
       // 3. Execution Decision Completion

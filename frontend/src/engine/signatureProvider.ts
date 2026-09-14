@@ -5,6 +5,15 @@
  * it is not an implementation of FIPS 204.
  */
 
+export interface SignatureVerificationResult {
+  isValid: boolean;
+  computedHashHex: string;
+  signedHashHex?: string;
+  publicKeyValid: boolean;
+  signatureEnvelopeValid: boolean;
+  reason?: string;
+}
+
 export interface SignatureProvider {
   name: string;
   algorithm: string;
@@ -19,12 +28,9 @@ export interface SignatureProvider {
   verify(
     canonicalBytes: Uint8Array,
     signatureHex: string,
-    publicKeyHex: string
-  ): Promise<{
-    isValid: boolean;
-    computedHashHex: string;
-    reason?: string;
-  }>;
+    publicKeyHex: string,
+    expectedContextHashHex?: string
+  ): Promise<SignatureVerificationResult>;
 }
 
 // Fallback SHA-256 in pure TS in case crypto.subtle is restricted
@@ -80,35 +86,57 @@ class MlDsaDemoProvider implements SignatureProvider {
   async verify(
     canonicalBytes: Uint8Array,
     signatureHex: string,
-    publicKeyHex: string
-  ): Promise<{
-    isValid: boolean;
-    computedHashHex: string;
-    reason?: string;
-  }> {
+    publicKeyHex: string,
+    expectedContextHashHex?: string
+  ): Promise<SignatureVerificationResult> {
     const computedHashHex = await this.hash(canonicalBytes);
+    const signedHashHex = expectedContextHashHex || computedHashHex;
 
-    // Tampered payload detection
-    if (signatureHex.includes("bad0bad0") || signatureHex.startsWith("invalid_")) {
+    const publicKeyValid = Boolean(publicKeyHex && publicKeyHex.length >= 16);
+    const signatureEnvelopeValid = !signatureHex.startsWith("invalid_") && !signatureHex.includes("bad0bad0");
+
+    // Check 1: Public key presence & format
+    if (!publicKeyValid) {
       return {
         isValid: false,
         computedHashHex,
-        reason:
-          "Cryptographic signature mismatch: The canonical context bytes have been altered since signing.",
+        signedHashHex,
+        publicKeyValid: false,
+        signatureEnvelopeValid,
+        reason: "Public key mismatch: unauthorized signer certificate.",
       };
     }
 
-    if (!publicKeyHex || publicKeyHex.length < 16) {
+    // Check 2: Signature envelope validity
+    if (!signatureEnvelopeValid) {
       return {
         isValid: false,
         computedHashHex,
-        reason: "Public key mismatch: unauthorized signer certificate.",
+        signedHashHex,
+        publicKeyValid: true,
+        signatureEnvelopeValid: false,
+        reason: "Cryptographic signature mismatch: The canonical context bytes have been altered since signing.",
+      };
+    }
+
+    // Check 3: Deterministic hash alignment if expectedContextHash is provided
+    if (expectedContextHashHex && expectedContextHashHex !== computedHashHex) {
+      return {
+        isValid: false,
+        computedHashHex,
+        signedHashHex: expectedContextHashHex,
+        publicKeyValid: true,
+        signatureEnvelopeValid: true,
+        reason: "Context commitment hash mismatch: Computed canonical hash differs from signed context.",
       };
     }
 
     return {
       isValid: true,
       computedHashHex,
+      signedHashHex,
+      publicKeyValid: true,
+      signatureEnvelopeValid: true,
     };
   }
 }

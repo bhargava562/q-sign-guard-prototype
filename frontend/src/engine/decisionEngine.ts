@@ -126,6 +126,9 @@ export async function evaluateTransactionGateway(
       algorithm: packet.algorithm,
       fingerprint: packet.publicKeyFingerprint || "7A:91:4F:2D:8C:77:E1:90:3B:5A:6D:88",
       verification: sigResult.passed ? "VALID" : "MISMATCH",
+      signedHashHex: sigResult.signedHashHex || packet.contextHashHex,
+      computedHashHex: sigResult.computedHashHex,
+      reason: sigResult.reason || "",
     },
   });
 

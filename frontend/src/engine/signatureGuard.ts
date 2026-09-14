@@ -5,6 +5,9 @@ import type { SignatureProvider } from "./signatureProvider";
 export interface SignatureGuardResult {
   passed: boolean;
   computedHashHex: string;
+  signedHashHex?: string;
+  publicKeyValid: boolean;
+  signatureEnvelopeValid: boolean;
   reason?: string;
   evidence: EvidenceItem[];
 }
@@ -26,7 +29,8 @@ export async function evaluateSignatureGuard(
   const verification = await provider.verify(
     canonicalBytes,
     packet.signatureHex,
-    packet.publicKeyHex
+    packet.publicKeyHex,
+    packet.contextHashHex
   );
 
   const evidence: EvidenceItem[] = [
@@ -61,6 +65,9 @@ export async function evaluateSignatureGuard(
   return {
     passed: verification.isValid,
     computedHashHex: verification.computedHashHex,
+    signedHashHex: verification.signedHashHex,
+    publicKeyValid: verification.publicKeyValid,
+    signatureEnvelopeValid: verification.signatureEnvelopeValid,
     reason: verification.reason,
     evidence,
   };
