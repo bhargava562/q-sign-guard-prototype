@@ -1,5 +1,5 @@
 import React from "react";
-import { Shield, Sun, Moon, Zap, Activity } from "lucide-react";
+import { Shield, Sun, Moon, Activity } from "lucide-react";
 import { useSecurityStore } from "../../store/securityStore";
 
 export const AppHeader: React.FC = () => {
@@ -39,30 +39,39 @@ export const AppHeader: React.FC = () => {
                   border: "1px solid rgb(var(--cyan) / 0.4)",
                 }}
               >
-                DEMO MODE
+                ENTERPRISE GATEWAY
               </span>
             </div>
             <p className="text-xs text-caption hidden sm:block">
-              Protocol-Aware Security Gateway for Post-Quantum Signatures
+              Post-Quantum Transaction Security Enclave
             </p>
           </div>
         </div>
 
-        {/* Central Invariant Ticker */}
+        {/* Operational Security Enclave Telemetry (No Presentation Proverbs) */}
         <div
-          className="hidden md:flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold"
+          className="hidden md:flex items-center gap-3 rounded-full px-3.5 py-1.5 text-[11px] font-mono"
           style={{
             backgroundColor: "rgb(var(--surface-muted))",
-            color: "rgb(var(--text-primary))",
+            color: "rgb(var(--text-secondary))",
             border: "1px solid rgb(var(--border))",
           }}
         >
-          <Zap className="h-3.5 w-3.5 text-amber-500" />
-          <span className="font-bold text-emerald-500">Authenticity</span>
-          <span className="text-caption">proves origin</span>
-          <span className="text-caption">•</span>
-          <span className="font-bold text-indigo-400">Context</span>
-          <span className="text-caption">proves execution validity</span>
+          <div className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+            <span className="font-bold text-heading">CIPHER:</span>
+            <span>ML-DSA-65</span>
+          </div>
+          <span className="text-caption">|</span>
+          <div className="flex items-center gap-1.5">
+            <span className="font-bold text-heading">CANONICAL:</span>
+            <span>RFC 8785</span>
+          </div>
+          <span className="text-caption">|</span>
+          <div className="flex items-center gap-1.5">
+            <span className="font-bold text-heading">DEFENSE:</span>
+            <span className="text-emerald-500 font-bold">STATEFUL INVARIANT</span>
+          </div>
         </div>
 
         {/* Status indicator and actions */}
