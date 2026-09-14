@@ -61,14 +61,14 @@ export const SignatureArtifact: React.FC<SignatureArtifactProps> = ({ signature,
           <div>
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-black text-heading tracking-wide uppercase">
-                {signature.algorithm} DIGITAL SIGNATURE
+                SIGNATURE VISUALIZATION
               </span>
               <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 font-bold">
-                FIPS 204
+                ML-DSA-65
               </span>
             </div>
-            <span className="text-[11px] font-mono text-caption">
-              Signer: {signerName}
+            <span className="text-[10px] font-mono text-caption block">
+              ML-DSA-65 Cryptographic Signature • Demonstration Representation ({signerName})
             </span>
           </div>
         </div>

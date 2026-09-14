@@ -7,6 +7,7 @@ import {
   Lock,
 } from "lucide-react";
 import { useSecurityStore } from "../../store/securityStore";
+import { AnalystPanel } from "../analyst/AnalystPanel";
 
 export const ExecutionReceipt: React.FC = () => {
   const {
@@ -109,6 +110,9 @@ export const ExecutionReceipt: React.FC = () => {
                 </p>
               </div>
             </div>
+
+            {/* AI Security Analyst Panel */}
+            <AnalystPanel />
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row items-center gap-3 w-full max-w-md">
@@ -226,6 +230,9 @@ export const ExecutionReceipt: React.FC = () => {
                 <span className="font-bold text-rose-500 uppercase">BLOCKED (0 funds dispatched)</span>
               </div>
             </div>
+
+            {/* AI Security Analyst Panel */}
+            <AnalystPanel />
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row items-center gap-3 w-full max-w-md">
