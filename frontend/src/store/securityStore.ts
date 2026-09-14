@@ -103,8 +103,33 @@ const DEFAULT_OPERATOR: OperatorUser = {
   enclave: "Asia-South-1 Enclave",
 };
 
+function buildFreshInboxItems(): InboxTransactionItem[] {
+  const now = Date.now();
+  const raw = JSON.parse(JSON.stringify(initialTransactionsData)) as InboxTransactionItem[];
+  return raw.map((item) => {
+    if (item.fixtureCondition === "expired") {
+      return {
+        ...item,
+        securityContext: {
+          ...item.securityContext,
+          issuedAt: new Date(now - 25 * 60 * 1000).toISOString(),
+          expiresAt: new Date(now - 10 * 60 * 1000).toISOString(),
+        },
+      };
+    }
+    return {
+      ...item,
+      securityContext: {
+        ...item.securityContext,
+        issuedAt: new Date(now - 60 * 1000).toISOString(),
+        expiresAt: new Date(now + 30 * 60 * 1000).toISOString(),
+      },
+    };
+  });
+}
+
 export const useSecurityStore = create<SecurityStoreState>((set, get) => {
-  const initialItems = JSON.parse(JSON.stringify(initialTransactionsData)) as InboxTransactionItem[];
+  const initialItems = buildFreshInboxItems();
 
   return {
     isAuthenticated: false,
@@ -316,9 +341,8 @@ export const useSecurityStore = create<SecurityStoreState>((set, get) => {
 
     resetInbox: () => {
       defaultReplayStore.reset();
-      const freshItems = JSON.parse(JSON.stringify(initialTransactionsData)) as InboxTransactionItem[];
       set({
-        inboxItems: freshItems,
+        inboxItems: buildFreshInboxItems(),
         selectedTransaction: null,
         operatorViewMode: "inbox",
         activePacket: null,
