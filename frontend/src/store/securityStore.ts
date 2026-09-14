@@ -12,6 +12,7 @@ import type {
   OperatorUser,
   InboxTransactionItem,
 } from "../types/transaction";
+import type { GatewayTraceEvent, GatewayTraceStage } from "../types/gatewayTrace";
 import { buildCanonicalContext, canonicalizeJson } from "../engine/canonicalize";
 import { defaultReplayStore } from "../engine/replayGuard";
 import { evaluateTransactionGateway } from "../engine/decisionEngine";
@@ -58,6 +59,11 @@ export interface SecurityStoreState {
     freshnessPassed: boolean | null;
   };
   lastDecision: SecurityDecision | null;
+
+  // Real-time Gateway Trace Infrastructure
+  traceEvents: GatewayTraceEvent[];
+  activeTraceEvent: GatewayTraceEvent | null;
+  activeNodeId: GatewayTraceStage | null;
 
   // Audit Ledger & Evidence Drawer
   auditEvents: AuditEvent[];
@@ -161,6 +167,10 @@ export const useSecurityStore = create<SecurityStoreState>((set, get) => {
     },
     lastDecision: null,
 
+    traceEvents: [],
+    activeTraceEvent: null,
+    activeNodeId: null,
+
     auditEvents: [],
     evidenceDrawerOpen: false,
     activeEvidencePacket: null,
@@ -184,7 +194,6 @@ export const useSecurityStore = create<SecurityStoreState>((set, get) => {
     setActiveTab: (activeTab) => {
       set({ activeTab });
       if (activeTab === "transactions") {
-        // Return to inbox when navigating to transactions
         set({ operatorViewMode: "inbox" });
       }
     },
@@ -197,6 +206,9 @@ export const useSecurityStore = create<SecurityStoreState>((set, get) => {
         operatorViewMode: "review",
         guardStates: { signaturePassed: null, contextPassed: null, freshnessPassed: null },
         lastDecision: null,
+        traceEvents: [],
+        activeTraceEvent: null,
+        activeNodeId: null,
       });
     },
 
@@ -206,6 +218,9 @@ export const useSecurityStore = create<SecurityStoreState>((set, get) => {
         selectedTransaction: null,
         activePacket: null,
         guardStates: { signaturePassed: null, contextPassed: null, freshnessPassed: null },
+        traceEvents: [],
+        activeTraceEvent: null,
+        activeNodeId: null,
       });
     },
 
@@ -227,13 +242,16 @@ export const useSecurityStore = create<SecurityStoreState>((set, get) => {
       const { selectedTransaction, reducedMotion } = get();
       if (!selectedTransaction) return;
 
-      const stepDelay = reducedMotion ? 0 : 300;
+      const traceDelayMs = reducedMotion ? 60 : 380;
 
       set({
         isProcessing: true,
         operatorViewMode: "corridor",
         lifecycleState: "PROCESSING",
         pipelinePhase: "collecting",
+        traceEvents: [],
+        activeTraceEvent: null,
+        activeNodeId: "received",
         guardStates: { signaturePassed: null, contextPassed: null, freshnessPassed: null },
       });
 
@@ -252,8 +270,7 @@ export const useSecurityStore = create<SecurityStoreState>((set, get) => {
       const canonicalContext = buildCanonicalContext(payload);
       const canonicalJson = canonicalizeJson(canonicalContext);
 
-      set({ pipelinePhase: "canonicalizing", canonicalContext });
-      if (stepDelay) await sleep(stepDelay);
+      set({ canonicalContext });
 
       // Packet with attached signature from the incoming request
       const packet: SignedTransactionPacket = {
@@ -267,37 +284,42 @@ export const useSecurityStore = create<SecurityStoreState>((set, get) => {
         publicKeyFingerprint: selectedTransaction.signature.publicKeyFingerprint,
       };
 
-      set({ activePacket: packet, pipelinePhase: "verifying-signature" });
-      if (stepDelay) await sleep(stepDelay);
+      set({ activePacket: packet });
 
-      // 2. Gateway Security Guard Evaluation
-      const { decision, guards } = await evaluateTransactionGateway(packet);
+      // 2. Gateway Security Guard Evaluation with Live Trace Instrumentation
+      const onTrace = async (event: GatewayTraceEvent) => {
+        set((state) => ({
+          traceEvents: [...state.traceEvents, event],
+          activeTraceEvent: event,
+          activeNodeId: event.stage,
+          guardStates: {
+            signaturePassed:
+              event.stage === "signature-verification"
+                ? event.status === "success"
+                : state.guardStates.signaturePassed,
+            contextPassed:
+              event.stage === "context-resolution"
+                ? event.status === "success"
+                : state.guardStates.contextPassed,
+            freshnessPassed:
+              event.stage === "replay-check"
+                ? event.status === "success"
+                : state.guardStates.freshnessPassed,
+          },
+        }));
+      };
 
-      // Step A: Authenticity Guard
-      set({
-        guardStates: { signaturePassed: guards.signaturePassed, contextPassed: null, freshnessPassed: null },
+      const { decision, guards: _guards } = await evaluateTransactionGateway(packet, {
+        onTrace,
+        traceDelayMs,
       });
-      if (stepDelay) await sleep(stepDelay);
 
-      // Step B: Context Guard
-      if (guards.signaturePassed) {
-        set({
-          pipelinePhase: "checking-context",
-          guardStates: { signaturePassed: true, contextPassed: guards.contextPassed, freshnessPassed: null },
-        });
-        if (stepDelay) await sleep(stepDelay);
+      // Give evaluator 650ms to digest the final execution gate status
+      if (!reducedMotion) {
+        await sleep(650);
       }
 
-      // Step C: Freshness Guard
-      if (guards.signaturePassed && guards.contextPassed) {
-        set({
-          pipelinePhase: "checking-freshness",
-          guardStates: { signaturePassed: true, contextPassed: true, freshnessPassed: guards.freshnessPassed },
-        });
-        if (stepDelay) await sleep(stepDelay);
-      }
-
-      // 3. Execution Decision
+      // 3. Execution Decision Completion
       const isAccepted = decision.status === "accepted";
       const updatedStatus = isAccepted ? ("authorized" as const) : ("blocked" as const);
 
@@ -348,6 +370,9 @@ export const useSecurityStore = create<SecurityStoreState>((set, get) => {
         activePacket: null,
         lastDecision: null,
         guardStates: { signaturePassed: null, contextPassed: null, freshnessPassed: null },
+        traceEvents: [],
+        activeTraceEvent: null,
+        activeNodeId: null,
       });
     },
   };
